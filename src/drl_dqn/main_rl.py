@@ -18,7 +18,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_checker import check_env
 
-from .utils.per_dqn import PerDQN
+from .per_dqn import PerDQN
 from .utils.plotresults import plot_training_results
 from .utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
 

@@ -70,7 +70,6 @@ def generate_map_multi_robot1() -> MapDescription:
     # print(positions)
     return robot, boundary, obstacles, goal
 
-
 def generate_map_multi_robot2() -> MapDescription:
     """
     Generates a randomized map with one static obstacle
@@ -216,7 +215,6 @@ def generate_map_multi_robot3() -> MapDescription:
     #     elif obs_start[1] == map_size-0.5*nest_size:
     #         obstacles.append(Obstacle.create_mpc_dynamic((obs_start[0],map_size - 0.5*nest_size), (obs_start[0],map_size - 2.5*nest_size), speed, 0.8, 0.3, pi/2, random = False))
     return MobileRobot(init_state), Boundary(nodes), obstacles, Goal((goal_position[0],goal_position[1]))
-
 
 def generate_map_multi_robot3_eval() -> MapDescription:
 

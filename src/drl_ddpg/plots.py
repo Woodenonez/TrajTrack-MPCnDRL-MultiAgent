@@ -3,7 +3,7 @@ This file generates all the plots used for the report. It has some extra
 dependencies which I can't be bothered to list, but if you happen to have a
 Chalmers StuDAT linux computer at hand, this file is comfirmed run on those.
 """
-import gym
+import gymnasium as gym
 import numpy as np
 
 import matplotlib
@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
 from .environment import plot
-from .environment import Goal, ATR, Obstacle, Boundary, MapDescription
+from .environment import Goal, MobileRobot, Obstacle, Boundary, MapDescription
+from .environment.environment import TrajectoryPlannerEnvironment
 from .utils.map import generate_map_dynamic, generate_map_corridor
 
 matplotlib.use('pgf')
@@ -33,7 +34,7 @@ def plot_evaluations(ax: Axes, file: str, *args, **kwargs) -> None:
 
 
 def generate_map() -> MapDescription:
-    atr = ATR((3.5, -0.5), 0, 0.85, 0)
+    atr = MobileRobot((3.5, -0.5), 0, 0.85, 0)
     boundary = Boundary([(-2, -2), (8, -2), (8, 10), (-2, 10)])
     obstacles = [
         Obstacle.create_mpc_static([(3, 3), (7.5, 3), (7.5, 6), (3, 6)]),
@@ -43,16 +44,16 @@ def generate_map() -> MapDescription:
 
     return atr, boundary, obstacles, goal
 
-env = gym.make('TrajectoryPlannerEnvironmentRaysReward1-v0', generate_map=generate_map)
+env: TrajectoryPlannerEnvironment = gym.make('TrajectoryPlannerEnvironmentRaysReward1-v0', generate_map=generate_map)
 env.reset()
-env.atr.position -= env.atr.position
+env.agent.position -= env.agent.position
 env.step(4)
 
 
 fig, ax = plt.subplots(1, 2, sharey='row', figsize=(SINGLE_COL, 2.4))
 
 plot.obstacles(ax[0], env.obstacles, label=None)
-plot.atr(ax[0], env.atr)
+plot.robot(ax[0], env.agent)
 plot.reference_path(ax[0], env.path, label=None)
 ax[0].set_aspect('equal')
 ax[0].set_xlim([-3, 9])
@@ -61,7 +62,7 @@ ax[0].set_xticks([], [])
 ax[0].set_yticks([], [])
 
 plot.obstacles(ax[1], env.obstacles, padded=True)
-ax[1].plot(env.atr.position[0], env.atr.position[1], '.r', label='ATR')
+ax[1].plot(env.agent.position[0], env.agent.position[1], '.r', label='ATR')
 plot.reference_path(ax[1], env.path)
 ax[1].set_aspect('equal')
 ax[1].set_xlim([-3, 9])
@@ -75,7 +76,7 @@ fig.savefig("fig/padded_obstacles.svg", bbox_inches='tight')
 fig, ax = plt.subplots(figsize=(SINGLE_COL, 2.5))
 
 plot.obstacles(ax, env.obstacles)
-plot.atr(ax, env.atr)
+plot.robot(ax, env.agent)
 plot.reference_path(ax, env.path)
 
 ax.set_aspect('equal')
@@ -111,9 +112,9 @@ plot.boundary(ax, env.boundary)
 plot.boundary(ax, env.boundary, ':k', padded=True, label='Padded boundary')
 plot.obstacles(ax, env.obstacles)
 plot.obstacles(ax, env.obstacles, ':r', padded=True, label='Padded obstacles')
-plot.atr(ax, env.atr)
-plot.sectors(ax, env.external_obs_component.segments, atr=env.atr, label='Sectors')
-plot.rays(ax, env.external_obs_component.rays, atr=env.atr, label='Rays')
+plot.robot(ax, env.agent)
+plot.sectors(ax, env.external_obs_component.segments, robot=env.agent, label='Sectors')
+plot.rays(ax, env.external_obs_component.rays, robot=env.agent, label='Rays')
 
 ax.set_aspect('equal')
 ax.set_xlim([-3, 9])
@@ -135,7 +136,7 @@ def generate_map_dyn() -> MapDescription:
 
 env = gym.make('TrajectoryPlannerEnvironmentImgsReward1-v0', generate_map=generate_map_dyn)
 env.reset()
-env.atr.position -= env.atr.position
+env.agent.position -= env.agent.position
 env.step(4)
 
 
@@ -145,7 +146,7 @@ plot.boundary(ax[0], env.boundary)
 plot.boundary(ax[0], env.boundary, ':k,', padded=True, label='Padded boundary')
 plot.obstacles(ax[0], env.obstacles)
 plot.obstacles(ax[0], env.obstacles, ':r', padded=True, label='Padded obstacles')
-plot.atr(ax[0], env.atr)
+plot.robot(ax[0], env.agent)
 ax[0].set_aspect('equal')
 ax[0].set_xlim([-3, 9])
 ax[0].set_ylim([-3, 11])
@@ -187,7 +188,7 @@ env.reset()
 
 plot.boundary(ax[0], env.boundary)
 plot.obstacles(ax[0], env.obstacles)
-plot.atr(ax[0], env.atr)
+plot.robot(ax[0], env.agent)
 plot.reference_path(ax[0], env.path)
 ax[0].set_aspect('equal')
 ax[0].set_xticks([], [])
@@ -199,7 +200,7 @@ env.reset()
 
 plot.boundary(ax[1], env.boundary)
 plot.obstacles(ax[1], env.obstacles)
-plot.atr(ax[1], env.atr)
+plot.robot(ax[1], env.agent)
 plot.reference_path(ax[1], env.path)
 ax[1].set_aspect('equal')
 ax[1].set_xticks([], [])

@@ -11,7 +11,7 @@ import numpy as np
 import shapely.ops
 from shapely.geometry import LineString, Polygon, JOIN_STYLE, Point
 
-from ..environment import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
+from ..drl_env import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
 
 from typing import Union, List, Tuple
 

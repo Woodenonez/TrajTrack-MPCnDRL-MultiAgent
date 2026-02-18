@@ -4,24 +4,22 @@ evaluated in. Such a map constitutes e.g. the initial robot position, the goal
 position and the locations of obstacles and boundaries.
 """
 
+from typing import Union, List, Tuple
 import math
+from math import pi, cos, sin
 import random
 
 import numpy as np
-import shapely.ops
-from shapely.geometry import LineString, Polygon, JOIN_STYLE, Point
-from math import pi, radians, cos, sin
+import shapely.ops # type: ignore
+from shapely.geometry import LineString, Polygon, JOIN_STYLE, Point # type: ignore
 
-from ..environment import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
+from drl_env import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
 
-from typing import Union, List, Tuple
 
 ### Training maps ###
 
-def generate_map_mpc(i: Union[int, None] = None) -> MapGenerator:
-    """
-    Generates maps from the paper https://doi.org/10.1109/CASE49439.2021.9551644
-    on MPC.
+def generate_map_mpc(i: int | None = None) -> MapGenerator:
+    """Generates maps from the MPC paper https://doi.org/10.1109/CASE49439.2021.9551644.
 
     ::returns:: When the parameter ``i`` is specified, returns a MapGenerator which
     generates the map with index ``i`` from the MPC paper. When ``i`` is
@@ -143,11 +141,11 @@ def generate_map_mpc(i: Union[int, None] = None) -> MapGenerator:
     def generate_map() -> MapDescription:
         env = random.choice(envs) if i is None else envs[i]
 
-        boundary = Boundary(env['boundary'])
+        boundary = Boundary(np.asarray(env['boundary']))
         obstacles = [
             *[Obstacle.create_mpc_static(coords) for coords in env.get('static_obstacles', [])],
             *[Obstacle.create_mpc_dynamic(*args) for args in env.get('dynamic_obstacles', [])]]
-        goal = Goal(env['goal'][:2])
+        goal = Goal(np.asarray(env['goal'][:2]))
         init_state = np.array(env['start'][:2] + (env['start'][2]+random.uniform(-0.2, 0.2), 0, 0))
         robot = MobileRobot(init_state)
 
@@ -157,9 +155,7 @@ def generate_map_mpc(i: Union[int, None] = None) -> MapGenerator:
 
 
 def generate_map_dynamic() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstalces
-    """
+    """Generates a randomized map with many dynamic obstalces"""
 
     init_state = np.array([5, random.uniform(5, 15), random.uniform(0, 2*math.pi), 0, 0])
     robot = MobileRobot(init_state)
@@ -183,7 +179,7 @@ def generate_map_dynamic() -> MapDescription:
             ry = random.uniform(0.2, 1.2)
             freq = random.uniform(0.1, 0.5)
             angle = random.uniform(0, 2 * math.pi)
-            # angle = math.atan2(y2-y,x2-y)
+            
             obstacles.append(Obstacle.create_mpc_dynamic((x, y), (x2, y2), freq, rx, ry, angle))
     goal = Goal((35, random.uniform(5, 15)))
 
@@ -201,7 +197,7 @@ def generate_map_corridor() -> MapDescription:
     corridor_padding = random.uniform(0.7, 1.5)
 
     coords = np.asarray([(0, 0), (wall_padding, 0)])
-    angle = 0
+    angle = 0.0
     for i in range(3):
         lo = -max_angle - angle
         hi = max_angle - angle
@@ -356,15 +352,15 @@ def generate_map_scene_1(sub_index: int, scene_option: int) -> MapDescription:
 
     elif sub_index == 4:
         if scene_option == 1:
-            unexpected_obstacle = Obstacle.create_mpc_dynamic_old(p1=(15.4, 3.5), p2=(0.6, 3.5), freq=0.15, rx=0.8, ry=0.8, angle=0.0, corners=20)
+            unexpected_obstacle = Obstacle.create_mpc_dynamic(p1=(15.4, 3.5), p2=(0.6, 3.5), freq=0.15, rx=0.8, ry=0.8, angle=0.0, corners=20, random=False)
             unexpected_obstacles.append(unexpected_obstacle)
         elif scene_option == 2:
-            unexpected_obstacle = Obstacle.create_mpc_dynamic_old(p1=(10.0, 1.0), p2=(10.0, 9.0), freq=0.2, rx=0.8, ry=0.8, angle=0.0, corners=20)
+            unexpected_obstacle = Obstacle.create_mpc_dynamic(p1=(10.0, 1.0), p2=(10.0, 9.0), freq=0.2, rx=0.8, ry=0.8, angle=0.0, corners=20, random=False)
             unexpected_obstacles.append(unexpected_obstacle)
         elif scene_option == 3:
             unexpected_obstacle = Obstacle.create_mpc_static([(7.2, 2.8), (7.2, 4.2), (8.8, 4.2), (8.8, 2.8)]) # medium
             unexpected_obstacles.append(unexpected_obstacle)
-            unexpected_obstacle = Obstacle.create_mpc_dynamic_old(p1=(10.0, 1.0), p2=(10.0, 9.0), freq=0.2, rx=0.8, ry=0.8, angle=0.0, corners=20)
+            unexpected_obstacle = Obstacle.create_mpc_dynamic(p1=(10.0, 1.0), p2=(10.0, 9.0), freq=0.2, rx=0.8, ry=0.8, angle=0.0, corners=20, random=False)
             unexpected_obstacles.append(unexpected_obstacle)
         else:
             raise ValueError(f"Invalid scene {sub_index} option, should be 1~3.")
@@ -493,7 +489,6 @@ def generate_map_eval() -> MapDescription:
 
     obstacles.append(Obstacle.create_mpc_static([(-14, -5), (-8, -5), (-8, 7), (-14, 7)]))
     
-    
     # obstacles.append(Obstacle.create_mpc_dynamic((-18, -4), (-15, 0), 0.4, 0.7, 0.5, pi/4, random = False))
     obstacles.append(Obstacle.create_mpc_dynamic((-10, -10), (-10, -7), 0.4, 0.7, 1, 0, random = False))
     obstacles.append(Obstacle.create_mpc_dynamic((1, -7), (-4, 1), 0.2, 1, 0.5, -pi/4, random = False))
@@ -538,7 +533,7 @@ def generate_map_eval_rand() -> MapDescription:
     corridor_padding = random.uniform(0.7, 1.5)
 
     coords = np.asarray([(0, 0), (wall_padding, 0)])
-    angle = 0
+    angle = 0.0
     for i in range(5):
         lo = -max_angle - angle
         hi = max_angle - angle

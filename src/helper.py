@@ -1,18 +1,18 @@
-from typing import List, Tuple
+from typing import List
 import math
 import random
 import statistics
 import timeit
 
 import numpy as np
-from shapely.geometry import Polygon, Point, LineString
+from shapely.geometry import Polygon, Point
 
 from path_planning import GeometricMap
 from obstacle_simulator.obstacle import geometry_tools
 
-from drl_dqn.environment import MapDescription
-from drl_dqn.utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
-from drl_dqn.utils.map import generate_map_scene_1, generate_map_scene_2
+from drl_env import MapDescription
+from drl_ddpg.utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
+from drl_ddpg.utils.map import generate_map_scene_1, generate_map_scene_2
 
 
 class PieceTimer:
@@ -80,18 +80,17 @@ class Metrics:
     5. Finish time (in one run)
     6. Success rate (in 10 runs)
     """
+    _mode_list = ['MPC', 'DQN-L', 'DQN-V', 'HYB-DQN-L', 'HYB-DQN-V',
+                  'DDPG-L', 'DDPG-V', 'HYB-DDPG-L', 'HYB-DDPG-V',]
+    
     def __init__(self, mode: str) -> None:
-        """
-        Args:
-            mode: dqn, mpc, or hyb
-        """
-        if mode not in ['DQN-V', 'MPC', 'HYB-DQN-V']:
-            raise ValueError(f"Mode {mode} not recognized (should be 'dqn', 'mpc', or 'hyb').")
+        if mode.upper() not in self._mode_list:
+            raise ValueError(f"Mode '{mode.upper()}' not recognized (should be in {self._mode_list}).")
         self.mode = mode
         self.trial_list = []
         self.success_rate = 0
 
-    def write_latex(self,round_digit:int=4):
+    def write_latex(self, round_digit:int=4):
         print_data = self.get_average(round_digit)
 
         ct = print_data["computation_time"]
@@ -115,6 +114,8 @@ class Metrics:
             all_clearance.append(trial["clearance"])
             if trial["success"]:
                 all_finish_time.append(trial["finish_time"])
+        if len(all_compuation_time) > 10:
+            all_compuation_time = all_compuation_time[5:] # remove the first 5 trials for more stable results
         if not all_finish_time:
             all_finish_time = [-1]
         self.metric_average["computation_time"] = [round(statistics.mean([x[0] for x in all_compuation_time]), round_digit),
@@ -122,8 +123,8 @@ class Metrics:
                                                    round(statistics.mean([x[2] for x in all_compuation_time]), round_digit)]
         self.metric_average["deviation_distance"] = [round(statistics.mean([x[0] for x in all_deviation_distance]), round_digit),
                                                      round(statistics.mean([x[1] for x in all_deviation_distance]), round_digit)]
-        self.metric_average["smoothness"] = [round(statistics.mean([x[0] for x in all_smoothness]), round_digit),
-                                             round(statistics.mean([x[1] for x in all_smoothness]), round_digit)]
+        self.metric_average["smoothness"] = [round(float(statistics.mean([x[0] for x in all_smoothness])), round_digit),
+                                             round(float(statistics.mean([x[1] for x in all_smoothness])), round_digit)]
         self.metric_average["clearance"] = round(statistics.mean(all_clearance), round_digit)
         self.metric_average["finish_time"] = round(statistics.mean(all_finish_time), round_digit)
         self.metric_average["success_rate"] = self.success_rate

@@ -4,16 +4,16 @@ evaluated in. Such a map constitutes e.g. the initial robot position, the goal
 position and the locations of obstacles and boundaries.
 """
 
+from typing import Union, List, Tuple
 import math
+from math import pi
 import random
 
 import numpy as np
-from math import pi, radians, cos, sin
 
 from ..environment import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
 from .map_multi_robot import generate_map_multi_robot3
 from .map import generate_map_corridor
-from typing import Union, List, Tuple
 
 ### Training maps ###
 
