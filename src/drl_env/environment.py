@@ -1,4 +1,4 @@
-from typing import Union, List, Tuple
+from typing import Any, Union, List
 import os
 from time import time
 from packaging import version
@@ -16,10 +16,6 @@ from path_planning.path_plan_cspace.visibility import VisibilityPathFinder
 
 from . import plot, MobileRobot, MapGenerator, MapDescription
 from .components.component import Component
-
-from numpy.typing import NDArray
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 
 
 GYM_0_22_X = version.parse(gym.__version__) >= version.parse("0.22.0")
@@ -67,7 +63,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
 
             assert len(component.internal_obs_min) == len(component.internal_obs_max)
             if len(component.external_obs_space.shape) > 0:
-                assert self.external_obs_component is None, "Environment can only have one external observation provider, this is a limitation which we did not have time to fix"
+                assert self.external_obs_component is None, "Environment can only have one external observation provider, this is a limitation to fix"
 
                 self.external_obs_component = component
 
@@ -86,13 +82,13 @@ class TrajectoryPlannerEnvironment(gym.Env):
             }
         )
 
-        # Action space is always the same. Linear acceleration has three
-        # possibilities, accelerate-cruise-deccelerate, and angular
-        # acceleration also has three possibilities left-middle-right
+        # Action space can be either discrete or continuous, depending on the configuration.
         if discrete_action:
             self.action_space = spaces.Discrete(3*3)
         else:
             self.action_space = spaces.Box(low=np.array([-1, -1], dtype=np.float32), high=np.array([1, 1], dtype=np.float32), dtype=np.float32)
+
+        self.path: LineString
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -154,7 +150,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
             obstacle_list=obstacle_list_mitred
         )
         try:
-            path, _ = environment.get_ref_path(self.agent.position, self.goal.position) # path: list[tuple[float, float]]
+            path, _ = environment.get_ref_path(self.agent.position.tolist(), self.goal.position.tolist())
             self.path = LineString(path)
             return len(path) > 0
         except Exception as e:
@@ -196,7 +192,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
         if GYM_0_22_X:
             return observation, info
         else:
-            return observation
+            return observation, {}
 
 
     def set_agent_state(self, position: np.ndarray, angle: float, speed: float, angular_velocity: float) -> None:
@@ -208,15 +204,14 @@ class TrajectoryPlannerEnvironment(gym.Env):
     def set_reference_path(self, path: List[tuple]) -> None:
         self.path = LineString(path)
 
-
     def step_obstacles(self) -> None:
         for obstacle in self.obstacles:
             obstacle.step(self.time_step)
 
-    def step_agent(self, action: int) -> None:
+    def step_agent(self, action) -> None:
         self.agent.step(action, self.time_step)
 
-    def step(self, action: int | None):
+    def step(self, action: Any | None):
         """Step the environment by one time step, including agent (optional) and obstacles.
 
         Args:
@@ -238,7 +233,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
         else:
             return observation, reward, terminated, info
 
-    def render(self, mode:str="human", dqn_ref=None, actual_ref=None, original_ref=None, save=False, save_num:int=1) -> Union[None, NDArray[np.uint8]]:
+    def render(self, mode:str="human", dqn_ref=None, actual_ref=None, original_ref=None, save=False, save_num:int=1):
         external = self.obsv.get("external")
         show_image = False
         if external is not None and len(external.shape) == 3 and external.dtype == np.uint8:
@@ -265,6 +260,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
             ax.cla()
 
         if show_image:
+            assert external is not None
             self.axes[2].imshow(external.transpose([1, 2, 0]))
 
         plot.obstacles(self.axes[0], self.obstacles)

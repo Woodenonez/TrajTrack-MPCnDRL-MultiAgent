@@ -1,9 +1,6 @@
-import os
 import numpy as np
 
 from ._obstacle_simulator import ObstacleSimulator
-
-from typing import Union
 
 
 class CrosswalkPedObstacleSimulator(ObstacleSimulator):
@@ -22,7 +19,7 @@ class CrosswalkPedObstacleSimulator(ObstacleSimulator):
         self.alpha_1 = 0.5 # probability for not crossing
         self.alpha_2 = 0.5 # probability for crossing
 
-    def _create_obstacle(self, mode:int=2):
+    def _create_obstacle(self, mode:int=2, **kwargs):
         speed_per_step = self.ts * self.speed
         
         self.obj_list = []
@@ -49,7 +46,7 @@ class CrosswalkPedObstacleSimulator(ObstacleSimulator):
 
         angle_0 = 0
         if mode == 1:
-            angle_1 = 0
+            angle_1 = 0.0
         else:
             angle_1 = np.pi/4
 

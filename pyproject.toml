@@ -17,4 +17,17 @@ dependencies = [
     "tqdm>=4.67.3",
     "gymnasium>=1.2.3",
     "stable-baselines3>=2.7.1",
+    "tyro>=1.0.13",
 ]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true

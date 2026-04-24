@@ -112,9 +112,8 @@ class MobileRobot:
 
         Action space (continous)
         ------------
-            The action space is continous and consists of two states
-            Angular acceleration betwen -3m/s^2 and 3m/s^2
-            Acceleration betwen -1m/s^2 and 1m/s^2
+            Linear and angular accelerations (a_v, a_w) [m/s^2, rad/s^2].
+
         Action space (discrete)
         ------------
             There are 9 combinations of angular (ag) and linear (li) accelerations:

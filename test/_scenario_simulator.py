@@ -1,10 +1,10 @@
-from typing import List, Any, Dict
+from dataclasses import dataclass
 import math
 import itertools
 import functools
 
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon # type: ignore
 
 from motion_model import motion_model
 from path_planning import GeometricMap
@@ -17,11 +17,23 @@ from visualizer.mpc_plot import MpcPlotInLoop
 from util import utils_geo
 
 
+@dataclass
+class RobotInfo:
+    traj_gen: TrajectoryGenerator
+    start: np.ndarray
+    end: np.ndarray
+    ref_path: list
+    mode: str
+    color: str
+    done: bool
+    pred_states: np.ndarray | None
+
+
 class Inflator:
     def __init__(self, inflate_margin):
         self.inflate_margin = inflate_margin
 
-    def __call__(self, polygon: List[tuple]):
+    def __call__(self, polygon: list[tuple]):
         shapely_inflated = geometry_tools.polygon_inflate(Polygon(polygon), self.inflate_margin)
         return geometry_tools.polygon_to_vertices(shapely_inflated)
 
@@ -48,7 +60,7 @@ class Simulator:
         self.__intro()
         self.load_map_and_obstacles()
 
-        self.robot_dict: Dict[Any, Dict] = {}
+        self.robot_dict: dict[int | str, RobotInfo] = {}
         self.plotter = MpcPlotInLoop(self.config)
 
     def __hint(self):
@@ -131,15 +143,22 @@ class Simulator:
         if robot_id in list(self.robot_dict):
             raise ValueError(f'Robot {robot_id} exists!')
         traj_gen = TrajectoryGenerator(self.config, motion_model.unicycle_model, False, self.use_tcp, verbose=self.vb)
-        this_robot_dict = {'traj_gen': traj_gen, 'start': start, 'end': end, 
-                           'ref_path': ref_path, 'mode': mode, 'color': color, 'done':False,
-                           'pred_states':None,} # pred_states is changed over time
-        self.robot_dict[robot_id] = this_robot_dict
+        robot_info = RobotInfo(
+            traj_gen=traj_gen,
+            start=start,
+            end=end,
+            ref_path=ref_path,
+            mode=mode,
+            color=color,
+            done=False,
+            pred_states=None
+        )
+        self.robot_dict[robot_id] = robot_info
 
     def set_obstacle_weights(self, robot_id, stc_weights, dyn_weights):
         if robot_id not in list(self.robot_dict):
             raise ValueError(f'Robot {robot_id} does not exist!')
-        traj_gen:TrajectoryGenerator = self.robot_dict[robot_id]['traj_gen']
+        traj_gen = self.robot_dict[robot_id].traj_gen
         traj_gen.set_obstacle_weights(stc_weights, dyn_weights)
 
     def get_other_robot_states(self, robot_id):
@@ -147,7 +166,7 @@ class Simulator:
         other_robot_states = [0] * self.ns * self.N_hor * self.config.Nother
         for id in list(self.robot_dict):
             if id != robot_id:
-                pred_states:np.ndarray = self.robot_dict[id]['pred_states'] # every row is a state
+                pred_states = self.robot_dict[id].pred_states # every row is a state
                 if pred_states is not None:
                     other_robot_states[idx : idx+self.ns*self.N_hor] = list(pred_states.reshape(-1))
                     idx += self.ns*self.N_hor
@@ -162,22 +181,22 @@ class Simulator:
         
         Returns:
             robot_dict: A dictionary of robot info, with keys:
-                `traj_gen`: TrajectoryGenerator object
-                `start`: start state
-                `end`: end state
-                `ref_path`: reference path
-                `mode`: work mode
-                `color`: color for plotting
-                `done`: whether the robot has finished its task
-                `pred_states`: predicted states
+            traj_gen: TrajectoryGenerator object
+            start: start state
+            end: end state
+            ref_path: reference path
+            mode: work mode
+            color: color for plotting
+            done: whether the robot has finished its task
+            pred_states: predicted states
         """
         ### Prepare for the loop computing ###
         for r_id in list(self.robot_dict):
-            start    = self.robot_dict[r_id]['start']
-            end      = self.robot_dict[r_id]['end']
-            mode     = self.robot_dict[r_id]['mode']
-            ref_path = self.robot_dict[r_id]['ref_path']
-            traj_gen:TrajectoryGenerator = self.robot_dict[r_id]['traj_gen']
+            start    = self.robot_dict[r_id].start
+            end      = self.robot_dict[r_id].end
+            mode     = self.robot_dict[r_id].mode
+            ref_path = self.robot_dict[r_id].ref_path
+            traj_gen = self.robot_dict[r_id].traj_gen
             traj_gen.load_init_state(start, end)
             traj_gen.set_work_mode(mode)
             traj_gen.set_ref_trajectory(ref_path)
@@ -191,12 +210,12 @@ class Simulator:
         if plot_in_loop:
             self.plotter.plot_in_loop_pre(map_manager)
             for r_id in list(self.robot_dict):
-                start    = self.robot_dict[r_id]['start']
-                end      = self.robot_dict[r_id]['end']
-                mode     = self.robot_dict[r_id]['mode']
-                ref_path = self.robot_dict[r_id]['ref_path']
-                color    = self.robot_dict[r_id]['color']
-                traj_gen:TrajectoryGenerator = self.robot_dict[r_id]['traj_gen']
+                start    = self.robot_dict[r_id].start
+                end      = self.robot_dict[r_id].end
+                mode     = self.robot_dict[r_id].mode
+                ref_path = self.robot_dict[r_id].ref_path
+                color    = self.robot_dict[r_id].color
+                traj_gen = self.robot_dict[r_id].traj_gen
                 self.plotter.add_object_to_pre(r_id, traj_gen.ref_traj.numpy(), start, end, color=color)
 
         while (not all_terminated):
@@ -215,13 +234,13 @@ class Simulator:
 
             ### Run solver
             for r_id in list(self.robot_dict):
-                mode  = self.robot_dict[r_id]['mode']
-                color = self.robot_dict[r_id]['color']
-                traj_gen:TrajectoryGenerator = self.robot_dict[r_id]['traj_gen']
+                mode  = self.robot_dict[r_id].mode
+                color = self.robot_dict[r_id].color
+                traj_gen = self.robot_dict[r_id].traj_gen
                 other_robot_states = self.get_other_robot_states(r_id)
-                current_ref_traj, traj_gen.idx_ref = traj_gen.get_local_ref_traj(traj_gen.idx_ref, traj_gen.ref_traj, traj_gen.state, action_steps=self.config.action_steps, horizon=self.N_hor)
+                current_ref_traj, *_ = traj_gen.get_local_ref_traj()
                 actions, pred_states, cost = traj_gen.run_step(stc_constraints, dyn_constraints, other_robot_states, current_ref_traj=current_ref_traj, mode=mode) # NOTE: SOLVING HERE
-                self.robot_dict[r_id]['pred_states'] = np.array(pred_states)
+                self.robot_dict[r_id].pred_states = np.array(pred_states)
                 ### Plot in loop
                 if plot_in_loop:
                     self.plotter.update_plot(r_id, kt, actions[-1], traj_gen.state, cost, np.array(pred_states), current_ref_traj, color=color)
@@ -230,10 +249,10 @@ class Simulator:
             ### Prepare for next loop ###
             cnt_done = 0
             for r_id in list(self.robot_dict):
-                traj_gen:TrajectoryGenerator = self.robot_dict[r_id]['traj_gen']
+                traj_gen = self.robot_dict[r_id].traj_gen
                 terminated = traj_gen.check_termination_condition(traj_gen.state, traj_gen.past_actions[-1], traj_gen.final_goal)
                 if terminated:
-                    self.robot_dict[r_id]['done'] = True
+                    self.robot_dict[r_id].done = True
                     cnt_done += 1
             if cnt_done == len(self.robot_dict):
                 all_terminated = True
@@ -242,7 +261,7 @@ class Simulator:
 
         if self.use_tcp:
             for r_id in list(self.robot_dict):
-                traj_gen:TrajectoryGenerator = self.robot_dict[r_id]['traj_gen']
+                traj_gen = self.robot_dict[r_id].traj_gen
                 traj_gen.mng.kill()
 
         if plot_in_loop:

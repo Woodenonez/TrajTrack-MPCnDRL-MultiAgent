@@ -1,5 +1,3 @@
-### System import
-from typing import List, Tuple
 import os
 import copy
 import pathlib
@@ -13,9 +11,9 @@ import matplotlib.pyplot as plt
 import torch
 from torch import no_grad
 import gymnasium as gym
+
 from stable_baselines3.common import env_checker
 from stable_baselines3 import DQN
-
 from drl_env import MobileRobot
 from drl_env.environment import TrajectoryPlannerEnvironment
 
@@ -40,7 +38,7 @@ def ref_traj_filter(original: np.ndarray, new: np.ndarray, decay=1):
             decay = 0.0
     return filtered
 
-def load_rl_model_env(generate_map, index: int) -> Tuple[DQN, TrajectoryPlannerEnvironment]:
+def load_rl_model_env(generate_map, index: int) -> tuple[DQN, TrajectoryPlannerEnvironment]:
     variant = [
         {
             'env_name': 'TrajectoryPlannerEnvironmentImgsReward-v0',
@@ -64,11 +62,11 @@ def load_rl_model_env(generate_map, index: int) -> Tuple[DQN, TrajectoryPlannerE
         raise ValueError('Invalid index')
     model_path = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'model/dqn', model_folder_name, 'best_model.pt')
     
-    env_eval:TrajectoryPlannerEnvironment = gym.make(variant['env_name'], generate_map=generate_map, discrete_action=True)
+    env_eval = gym.make(variant['env_name'], generate_map=generate_map, discrete_action=True)
     env_checker.check_env(env_eval)
     model = DQN("MultiInputPolicy", env_eval, policy_kwargs={'net_arch': variant['net_arch']}, device=variant['device'])
     model.policy.load_state_dict(torch.load(model_path, map_location=variant['device'], weights_only=False))
-    return model, env_eval
+    return model, env_eval.unwrapped
 
 def est_dyn_obs_positions(last_pos: list, current_pos: list, steps:int=20):
     """Estimate the dynamic obstacle positions in the future."""
@@ -83,19 +81,21 @@ def circle_to_rect(pos: list, radius:float=DYN_OBS_SIZE):
     return [[pos[0]-radius, pos[1]-radius], [pos[0]+radius, pos[1]-radius], [pos[0]+radius, pos[1]+radius], [pos[0]-radius, pos[1]+radius]]
 
 
-def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[int, int, int]=(1, 1, 1), save_num:int=1):
+def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:tuple[int, int, int]=(1, 1, 1), save_num:int=1):
     """
     Args:
         rl_index: 0 for image, 1 for ray
-        decision_mode: 0 for pure rl, 1 for pure mpc, 2 for hybrid
+        decision_mode: 0 for pure mpc, 1 for pure rl, 2 for hybrid
     """
-    prt_decision_mode = {0: 'pure_rl', 1: 'pure_mpc', 2: 'hybrid'}
+    prt_decision_mode = {0: 'pure_mpc', 1: 'pure_rl', 2: 'hybrid'}
     print(f"The decision mode is: {prt_decision_mode[decision_mode]}")
+    if decision_mode != 0:
+        prt_rl_index = {0: 'image', 1: 'ray'}
+        print(f"The RL model is: {prt_rl_index[rl_index]}")
 
     time_list = []
 
     model, env_eval = load_rl_model_env(generate_map(*scene_option), rl_index)
-    env_eval: TrajectoryPlannerEnvironment = env_eval.unwrapped
 
     CONFIG_FN = 'mpc_default.yaml'
     cfg_fpath = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'config', CONFIG_FN)
@@ -174,8 +174,7 @@ def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[
                     obsv, reward, done, truncated, info = env_eval.step(action=None) # step the environment but not the agent
 
                     rl_ref = []
-                    robot_sim:MobileRobot = copy.deepcopy(env_eval.agent)
-                    robot_sim:MobileRobot
+                    robot_sim: MobileRobot = copy.deepcopy(env_eval.agent)
                     if NEW_RL_REF:
                         env_sim:TrajectoryPlannerEnvironment = copy.deepcopy(env_eval)
                         for j in range(20):
@@ -201,7 +200,12 @@ def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[
                         traj_gen.update_dynamic_constraints(dyn_obstacle_pred_list)
                     original_ref_traj, rl_ref_traj, *_ = traj_gen.get_local_ref_traj(np.array(rl_ref))
                     filtered_ref_traj = ref_traj_filter(original_ref_traj, rl_ref_traj, decay=1) # decay=1 means no decay
-                    if switch.switch(traj_gen.state[:2], original_ref_traj.tolist(), filtered_ref_traj.tolist(), geo_map.processed_obstacle_list+dyn_obstacle_list_poly):
+                    if switch.switch(
+                        traj_gen.state[:2].tolist(), 
+                        original_ref_traj.tolist(), 
+                        filtered_ref_traj.tolist(), 
+                        geo_map.processed_obstacle_list+dyn_obstacle_list_poly
+                    ):
                         chosen_ref_traj = filtered_ref_traj
                     else:
                         chosen_ref_traj = original_ref_traj
@@ -253,9 +257,9 @@ if __name__ == '__main__':
 
     scene_option = (1, 1, 2)
 
-    # time_list_mpc     = main(rl_index=1,        decision_mode=1,  to_plot=True, scene_option=scene_option, save_num=1)
-    # time_list_img     = main(rl_index=0,        decision_mode=0,  to_plot=True, scene_option=scene_option, save_num=3)
-    time_list_hyb_img = main(rl_index=0,        decision_mode=2,  to_plot=True, scene_option=scene_option, save_num=5)
+    # time_list_mpc     = main(rl_index=0, decision_mode=0, to_plot=True, scene_option=scene_option, save_num=1)
+    # time_list_img     = main(rl_index=0, decision_mode=1, to_plot=True, scene_option=scene_option, save_num=3)
+    time_list_hyb_img = main(rl_index=0, decision_mode=2, to_plot=True, scene_option=scene_option, save_num=5)
 
     # print(f"Average time: \nDQN {np.mean(time_list_lid)}ms; \nMPC {np.mean(time_list_mpc)}ms; \nHYB {np.mean(time_list_hyb_lid)}ms; \n")
 

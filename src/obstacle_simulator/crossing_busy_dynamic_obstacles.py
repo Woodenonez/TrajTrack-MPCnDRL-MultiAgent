@@ -56,7 +56,7 @@ class _ObstacleSimulator_Ped_1(ObstacleSimulator):
         self.alpha_1 = 0.5 # probability for not crossing
         self.alpha_2 = 0.5 # probability for crossing
 
-    def _create_obstacle(self, mode:int=1):
+    def _create_obstacle(self, mode:int=1, **kwargs):
         T = self.T_max
         a1, a2, sx, sy = self.alpha_1, self.alpha_2, self.sigma_x, self.sigma_y
         self.obj_list = []
@@ -113,7 +113,7 @@ class _ObstacleSimulator_Ped_2(ObstacleSimulator):
         self.alpha_1 = 0.5 # probability for not crossing
         self.alpha_2 = 0.5 # probability for crossing
 
-    def _create_obstacle(self, mode:int=1):
+    def _create_obstacle(self, mode:int=1, **kwargs):
         T = self.T_max
         a1, a2, sx, sy = self.alpha_1, self.alpha_2, self.sigma_x, self.sigma_y
         self.obj_list = []
@@ -184,7 +184,7 @@ class _ObstacleSimulator_Ped_3(ObstacleSimulator):
         self.alpha_2 = 0.3 # no crossing
         self.alpha_3 = 0.3 # no crossing
 
-    def _create_obstacle(self, mode:int=1):
+    def _create_obstacle(self, mode:int=1, **kwargs):
         T = self.T_max
         a1, a2, a3, sx, sy = self.alpha_1, self.alpha_2, self.alpha_3, self.sigma_x, self.sigma_y
         self.obj_list = []
@@ -245,7 +245,7 @@ class _ObstacleSimulator_Veh_1(ObstacleSimulator):
         self.alpha_2 = 0.5 # no crossing
         # a3 = 0
 
-    def _create_obstacle(self, mode:int=1):
+    def _create_obstacle(self, mode:int=1, **kwargs):
         T = self.T_max
         a1, a2, sx, sy = self.alpha_1, self.alpha_2, self.sigma_x, self.sigma_y
         self.obj_list = []
@@ -315,7 +315,7 @@ class _ObstacleSimulator_Veh_2(ObstacleSimulator):
         self.alpha_2 = 0.5 # no crossing
         # a3 = 0
 
-    def _create_obstacle(self, mode:int=1):
+    def _create_obstacle(self, mode:int=1, **kwargs):
         T = self.T_max
         a1, a2, sx, sy = self.alpha_1, self.alpha_2, self.sigma_x, self.sigma_y
         self.obj_list = []

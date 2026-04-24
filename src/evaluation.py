@@ -1,5 +1,4 @@
 ### System import
-from typing import List, Tuple
 import os
 import copy
 import pathlib
@@ -7,14 +6,13 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 ### DRL import
 import torch
 from torch import no_grad
 import gymnasium as gym
 from stable_baselines3.common import env_checker
-from drl_ddpg.per_ddpg import PerDDPG
+from drl_alg.per_ddpg import PerDDPG
 
 from drl_env import MobileRobot
 from drl_env.environment import TrajectoryPlannerEnvironment
@@ -40,7 +38,7 @@ def ref_traj_filter(original: np.ndarray, new: np.ndarray, decay=1):
             decay = 0.0
     return filtered
 
-def load_rl_model_env(generate_map, index: int) -> Tuple[PerDDPG, TrajectoryPlannerEnvironment]:
+def load_rl_model_env(generate_map, index: int) -> tuple[PerDDPG, TrajectoryPlannerEnvironment]:
     variant = [
         {
             'env_name': 'TrajectoryPlannerEnvironmentImgsReward-v0',
@@ -85,7 +83,7 @@ def circle_to_rect(pos: list, radius:float=DYN_OBS_SIZE):
     return [[pos[0]-radius, pos[1]-radius], [pos[0]+radius, pos[1]-radius], [pos[0]+radius, pos[1]+radius], [pos[0]-radius, pos[1]+radius]]
 
 
-def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[int, int, int]=(1, 1, 1), verbose:bool=False):
+def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:tuple[int, int, int]=(1, 1, 1), verbose:bool=False):
     """
     Args:
         rl_index: 0 for image, 1 for ray
@@ -144,7 +142,7 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
                 if decision_mode == 0:
                     env_eval.set_agent_state(traj_gen.state[:2], traj_gen.state[2], 
                                                 traj_gen.last_action[0], traj_gen.last_action[1])
-                    obsv, reward, done, truncated, info = env_eval.step([0,0]) # just for plotting and updating status
+                    obsv, reward, done, truncated, info = env_eval.step([0, 0]) # just for plotting and updating status
 
                     if dyn_obstacle_list:
                         traj_gen.update_dynamic_constraints(dyn_obstacle_pred_list)

@@ -1,5 +1,3 @@
-### System import
-from typing import List, Tuple
 import os
 import copy
 import pathlib
@@ -13,9 +11,9 @@ import matplotlib.pyplot as plt
 import torch
 from torch import no_grad
 import gymnasium as gym
-from stable_baselines3.common import env_checker
-from drl_ddpg.per_ddpg import PerDDPG
 
+from stable_baselines3.common import env_checker
+from drl_alg.per_ddpg import PerDDPG
 from drl_env import MobileRobot
 from drl_env.environment import TrajectoryPlannerEnvironment
 
@@ -40,7 +38,7 @@ def ref_traj_filter(original: np.ndarray, new: np.ndarray, decay=1):
             decay = 0.0
     return filtered
 
-def load_rl_model_env(generate_map, index: int) -> Tuple[PerDDPG, TrajectoryPlannerEnvironment]:
+def load_rl_model_env(generate_map, index: int) -> tuple[PerDDPG, TrajectoryPlannerEnvironment]:
     variant = [
         {
             'env_name': 'TrajectoryPlannerEnvironmentImgsReward-v0',
@@ -64,11 +62,11 @@ def load_rl_model_env(generate_map, index: int) -> Tuple[PerDDPG, TrajectoryPlan
         raise ValueError('Invalid index')
     model_path = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'model/ddpg', model_folder_name, 'best_model.pt')
     
-    env_eval:TrajectoryPlannerEnvironment = gym.make(variant['env_name'], generate_map=generate_map, discrete_action=False)
+    env_eval = gym.make(variant['env_name'], generate_map=generate_map, discrete_action=False)
     env_checker.check_env(env_eval)
     ddpg_model = PerDDPG("MultiInputPolicy", env_eval, policy_kwargs={'net_arch': variant['net_arch']}, device=variant['device'])
     ddpg_model.policy.load_state_dict(torch.load(model_path, map_location=variant['device'], weights_only=False))
-    return ddpg_model, env_eval
+    return ddpg_model, env_eval.unwrapped
 
 def est_dyn_obs_positions(last_pos: list, current_pos: list, steps:int=20):
     """
@@ -85,19 +83,21 @@ def circle_to_rect(pos: list, radius:float=DYN_OBS_SIZE):
     return [[pos[0]-radius, pos[1]-radius], [pos[0]+radius, pos[1]-radius], [pos[0]+radius, pos[1]+radius], [pos[0]-radius, pos[1]+radius]]
 
 
-def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[int, int, int]=(1, 1, 1), save_num:int=1):
+def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:tuple[int, int, int]=(1, 1, 1), save_num:int=1):
     """
     Args:
         rl_index: 0 for image, 1 for ray
         decision_mode: 0 for pure mpc, 1 for pure ddpg, 2 for hybrid
     """
-    prt_decision_mode = {0: 'pure_mpc', 1: 'pure_ddpg', 2: 'hybrid_ddpg'}
+    prt_decision_mode = {0: 'pure_mpc', 1: 'pure_rl', 2: 'hybrid'}
     print(f"The decision mode is: {prt_decision_mode[decision_mode]}")
+    if decision_mode != 0:
+        prt_rl_index = {0: 'image', 1: 'ray'}
+        print(f"The RL model is: {prt_rl_index[rl_index]}")
 
     time_list = []
 
     ddpg_model, env_eval = load_rl_model_env(generate_map(*scene_option), rl_index)
-    env_eval: TrajectoryPlannerEnvironment = env_eval.unwrapped
 
     CONFIG_FN = 'mpc_default.yaml'
     cfg_fpath = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'config', CONFIG_FN)
@@ -141,7 +141,7 @@ def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[
                 if decision_mode == 0:
                     env_eval.set_agent_state(traj_gen.state[:2], traj_gen.state[2], 
                                              traj_gen.last_action[0], traj_gen.last_action[1])
-                    obsv, reward, done, truncated, info = env_eval.step([0,0]) # just for plotting and updating status
+                    obsv, reward, done, truncated, info = env_eval.step([0, 0]) # just for plotting and updating status
 
                     if dyn_obstacle_list:
                         traj_gen.update_dynamic_constraints(dyn_obstacle_pred_list)
@@ -194,8 +194,7 @@ def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[
                                     rl_skip = 0
 
                     else:
-                        robot_sim:MobileRobot = copy.deepcopy(env_eval.agent)
-                        robot_sim:MobileRobot
+                        robot_sim: MobileRobot = copy.deepcopy(env_eval.agent)
                         for j in range(20):
                             if j == 0:
                                 robot_sim.step(action_index, traj_gen.config.ts)
@@ -210,7 +209,7 @@ def main(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:Tuple[
                         traj_gen.update_dynamic_constraints(dyn_obstacle_pred_list)
                     original_ref_traj, rl_ref_traj, extra_ref_traj = traj_gen.get_local_ref_traj(np.array(rl_ref))
                     filtered_ref_traj = ref_traj_filter(original_ref_traj, rl_ref_traj, decay=1) # decay=1 means no decay
-                    if switch.switch(traj_gen.state[:2], extra_ref_traj.tolist(), filtered_ref_traj.tolist(), geo_map.processed_obstacle_list+dyn_obstacle_list_poly):
+                    if switch.switch(traj_gen.state[:2].tolist(), extra_ref_traj.tolist(), filtered_ref_traj.tolist(), geo_map.processed_obstacle_list+dyn_obstacle_list_poly):
                         chosen_ref_traj = filtered_ref_traj
                     else:
                         chosen_ref_traj = original_ref_traj

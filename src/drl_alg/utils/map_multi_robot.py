@@ -1,12 +1,9 @@
-import math
 import random
+from math import pi
 
 import numpy as np
-from math import pi, radians, cos, sin
 
-from ..environment import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
-
-from typing import Union, List, Tuple
+from drl_env import MobileRobot, Obstacle, Boundary, Goal, MapDescription
 
 
 rot_90 = np.array([[0,-1],[1,0]])
@@ -14,19 +11,14 @@ rot_180 = np.array([[-1,0],[0,-1]])
 rot_270 = np.array([[0,1],[-1,0]])
 
 def generate_map_multi_robot1() -> MapDescription:
+    """Generates a randomized map with one static obstacle
     """
-    Generates a randomized map with one static obstacle
-    """
-    
     box_resolution = 9
     nest_size = 3
     
-    
-
     map_size = nest_size*box_resolution
 
     nodes = np.array([(0,0),(0,nest_size),(nest_size,nest_size),(nest_size,nest_size - 0.2),(0.2,nest_size - 0.2),(0.2,0.2),(nest_size,0.2),(nest_size,0)]).T
-
 
     boundary = Boundary([(0, 0), (map_size, 0), (map_size, map_size), (0, map_size)])
     positions = []
@@ -59,7 +51,6 @@ def generate_map_multi_robot1() -> MapDescription:
                 obstacles.append(Obstacle.create_mpc_static(list(map(tuple,(rot_270@nodes+np.array([i*nest_size,3*nest_size]).reshape(2,1)).T))))
                 positions.append((i*nest_size + nest_size/2, 2.5*nest_size))
 
-
     random.shuffle(positions)
     start_position = positions.pop()
 
@@ -83,7 +74,6 @@ def generate_map_multi_robot2() -> MapDescription:
     map_size = nest_size*box_resolution
     nodes = []#[(nest_size,nest_size)]
     positions = []
-
     obstacles = []
     for i in range(map_size//nest_size): #LEFTSECTION
         if i < map_size//nest_size - 1 and i > 0:

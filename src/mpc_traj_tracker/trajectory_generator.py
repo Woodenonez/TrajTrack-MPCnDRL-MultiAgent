@@ -156,7 +156,7 @@ class TrajectoryGenerator:
             raise TypeError(f'State should be numpy.ndarry, got {type(current_state)}.')
         self.state = current_state
 
-    def set_ref_trajectory(self, ref_path:PathNodeList):
+    def set_ref_trajectory(self, ref_path: PathNodeList | list):
         '''
         Attributes:
             :idx_ref, start from 0
@@ -255,11 +255,11 @@ class TrajectoryGenerator:
         ref_traj_local = np.array([tmpx, tmpy, tmpt]).transpose()
         return ref_traj_local, idx_next
     
-    def get_local_ref_traj(self, local_ref_traj:np.ndarray=None):
+    def get_local_ref_traj(self, local_ref_traj: np.ndarray | None = None):
         idx_ref = self.idx_ref
 
-        extra_ref_traj, *_ = self._get_local_ref_traj(idx_ref, self.ref_traj, self.state, action_steps=self.config.action_steps, horizon=self.config.N_hor)
-        original_ref_traj, idx_ref = self._get_local_ref_traj(idx_ref, self.ref_traj, self.state, action_steps=self.config.action_steps, horizon=self.config.N_hor)
+        extra_ref_traj, *_ = self._get_local_ref_traj(idx_ref, self.ref_traj, (self.state[0], self.state[1]), action_steps=self.config.action_steps, horizon=self.config.N_hor)
+        original_ref_traj, idx_ref = self._get_local_ref_traj(idx_ref, self.ref_traj, (self.state[0], self.state[1]), action_steps=self.config.action_steps, horizon=self.config.N_hor)
         self.idx_ref = idx_ref
         if local_ref_traj is not None:
             if local_ref_traj.shape[1] == 2:
@@ -267,7 +267,7 @@ class TrajectoryGenerator:
         return original_ref_traj, local_ref_traj, extra_ref_traj
     
 
-    def get_action(self, current_ref_traj: np.ndarray, mode='work', initial_guess:np.ndarray=None):
+    def get_action(self, current_ref_traj: np.ndarray, mode='work', initial_guess: np.ndarray | None = None):
         if self.check_termination_condition(self.state, self._last_action, self.final_goal):
             return None
         actions, pred_states, cost = self.run_step(self.stc_constraints, self.dyn_constraints, 
@@ -422,7 +422,7 @@ class TrajectoryGenerator:
         return taken_states, pred_states, actions, cost, solver_time, exit_status
 
     def _vis_params(self, params, current_ref_traj):
-        import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt # type: ignore
         fig, ax = plt.subplots()
 
         state = params[:self.ns]

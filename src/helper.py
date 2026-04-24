@@ -11,8 +11,8 @@ from path_planning import GeometricMap
 from obstacle_simulator.obstacle import geometry_tools
 
 from drl_env import MapDescription
-from drl_ddpg.utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
-from drl_ddpg.utils.map import generate_map_scene_1, generate_map_scene_2
+from drl_alg.utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
+from drl_alg.utils.map import generate_map_scene_1, generate_map_scene_2
 
 
 class PieceTimer:

@@ -11,11 +11,10 @@ from matplotlib.gridspec import GridSpec
 
 # Type hint only
 from matplotlib.axes import Axes
-from util.mpc_config import Configurator
+from mpc_traj_tracker.config import MPCConfig
 
-N_HOR = 20
 
-def figure_formatter(window_title:str, num_axes_per_column:list, figure_size:tuple=None):
+def figure_formatter(window_title:str, num_axes_per_column:list, figure_size: tuple | None = None):
     '''
     Argument
         num_axes_per_column: The length of the list is the number of columns of the figure. 
@@ -36,7 +35,7 @@ def figure_formatter(window_title:str, num_axes_per_column:list, figure_size:tup
     # fig.canvas.set_window_title(window_title)
     gs = GridSpec(n_row, n_col, figure=fig)
 
-    axis_format = []
+    axis_format: list[list[Axes]] = []
     for i in range(n_col):
         axis_format.append([])
         for j in range(num_axes_per_column[i]):
@@ -46,7 +45,7 @@ def figure_formatter(window_title:str, num_axes_per_column:list, figure_size:tup
     return fig, gs, axis_format
 
 class MpcPlotInLoop:
-    def __init__(self, config:Configurator) -> None:
+    def __init__(self, config: MPCConfig) -> None:
         '''
         Attribute
             plot_dict_pre   : A dictionary of all plot objects which need to be manually flushed.
@@ -197,7 +196,7 @@ class MpcPlotInLoop:
 
 
 class MpcPlotAfter:
-    def __init__(self, config:Configurator, legend_style, double_map:bool, color_list=None, legend_list=None) -> None:
+    def __init__(self, config: MPCConfig, legend_style, double_map: bool, color_list=None, legend_list=None) -> None:
         '''
         Argument
             legend_style: 'single'(plot one object) or 'compare'(plot multiple objects);
@@ -207,6 +206,7 @@ class MpcPlotAfter:
         '''
         self.ts    = config.ts
         self.width = config.vehicle_width
+        self.n_hor  = config.N_hor
 
         self.l_style = legend_style
         self.doub_map = double_map
@@ -319,7 +319,7 @@ class MpcPlotAfter:
 
     def plot_dynamic_results(self, map_manager, xx, xy, vel, omega, cost, start, end, scanner, make_video=False):
         if make_video:
-            from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+            from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas # type: ignore
             self.__reload(make_video=True)
         
         self.__plot_prepare(map_manager, start, end)
@@ -374,7 +374,7 @@ class MpcPlotAfter:
 
             ## Plot predictions # NOTE
             pred = []
-            for j, obstacle in enumerate(scanner.get_full_obstacle_list(i*self.ts, N_HOR, ts=self.ts)):
+            for j, obstacle in enumerate(scanner.get_full_obstacle_list(i*self.ts, self.n_hor, ts=self.ts)):
                 for al, obsya in enumerate(obstacle):
                     x,y,rx,ry,angle,_ = obsya
                     pos = (x,y)

@@ -30,7 +30,7 @@ class ObstacleSimulator(ABC):
             :where 'm' is the number of components/futures and 'a' is the weight.
             :note that kt is the relative time step (from 0).
         """
-        self.obj_list = []
+        self.obj_list: list = []
 
     def get_obs_dict(self, current_time) -> Union[dict, None]:
         """
