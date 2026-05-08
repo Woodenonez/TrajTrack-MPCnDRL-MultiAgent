@@ -5,7 +5,7 @@ stable_baselines3 `DQN`` class, in particular the ``train`` method of the class
 ``PerDQN`` is mostly copy-paste with minor changes.
 """
 
-from typing import Any, Type, Union
+from typing import Any, Type, Union, ClassVar
 
 import numpy as np
 import torch
@@ -59,7 +59,7 @@ class PerDQN(DQN):
     :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
 
-    policy_aliases: dict[str, Type[BasePolicy]] = {
+    policy_aliases: ClassVar[dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
@@ -85,7 +85,6 @@ class PerDQN(DQN):
         exploration_final_eps: float = 0.05,
         max_grad_norm: float = 10,
         tensorboard_log: str | None = None,
-        create_eval_env: bool = False,
         policy_kwargs: dict[str, Any] | None = None,
         verbose: int = 0,
         seed: int | None = None,
@@ -94,34 +93,35 @@ class PerDQN(DQN):
     ):
 
         super().__init__(
-            policy,
-            env,
-            learning_rate,
-            buffer_size,
-            learning_starts,
-            batch_size,
-            tau,
-            gamma,
-            train_freq,
-            gradient_steps,
-            PerReplayBuffer,
-            replay_buffer_kwargs,
-            optimize_memory_usage,
-            target_update_interval,
-            exploration_fraction,
-            exploration_initial_eps,
-            exploration_final_eps,
-            max_grad_norm,
-            tensorboard_log,
-            create_eval_env,
-            policy_kwargs,
-            verbose,
-            seed,
-            device,
-            _init_setup_model,
+            policy=policy,
+            env=env,
+            learning_rate=learning_rate,
+            buffer_size=buffer_size,
+            learning_starts=learning_starts,
+            batch_size=batch_size,
+            tau=tau,
+            gamma=gamma,
+            train_freq=train_freq,
+            gradient_steps=gradient_steps,
+            replay_buffer_class=PerReplayBuffer,
+            replay_buffer_kwargs=replay_buffer_kwargs,
+            optimize_memory_usage=optimize_memory_usage,
+            target_update_interval=target_update_interval,
+            exploration_fraction=exploration_fraction,
+            exploration_initial_eps=exploration_initial_eps,
+            exploration_final_eps=exploration_final_eps,
+            max_grad_norm=max_grad_norm,
+            tensorboard_log=tensorboard_log,
+            policy_kwargs=policy_kwargs,
+            verbose=verbose,
+            seed=seed,
+            device=device,
+            _init_setup_model=_init_setup_model,
         )
 
     def train(self, gradient_steps: int, batch_size: int = 100) -> None:
+        assert isinstance(self.replay_buffer, PerReplayBuffer)
+
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update learning rate according to schedule

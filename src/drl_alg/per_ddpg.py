@@ -5,7 +5,7 @@ stable_baselines3 `DDPG`` class, in particular the ``train`` method of the class
 ``PerDDPG`` is mostly copy-paste with minor changes.
 """
 
-from typing import Any, Type, Union
+from typing import Any, Type, Union, ClassVar
 
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ from stable_baselines3 import DDPG
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.type_aliases import GymEnv, Schedule
 from stable_baselines3.td3.policies import CnnPolicy, TD3Policy, MlpPolicy, MultiInputPolicy
-from stable_baselines3.common.noise import NormalActionNoise
+from stable_baselines3.common.noise import ActionNoise, NormalActionNoise
 
 from . import PerReplayBuffer
 
@@ -60,7 +60,7 @@ class PerDDPG(DDPG):
     :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
 
-    policy_aliases: dict[str, Type[BasePolicy]] = {
+    policy_aliases: ClassVar[dict[str, Type[BasePolicy]]] = {
         "MlpPolicy": MlpPolicy,
         "CnnPolicy": CnnPolicy,
         "MultiInputPolicy": MultiInputPolicy,
@@ -78,7 +78,7 @@ class PerDDPG(DDPG):
         gamma: float = 0.99,
         train_freq: Union[int, tuple[int, str]] = 4,
         gradient_steps: int = 1,
-        action_noise: np.float32 = NormalActionNoise(mean=np.zeros(2), sigma=0.1 * np.ones(2)),
+        action_noise: ActionNoise = NormalActionNoise(mean=np.zeros(2), sigma=0.1 * np.ones(2)),
         replay_buffer_kwargs: dict[str, Any] | None = None,
         optimize_memory_usage: bool = False,
         tensorboard_log: str | None = None,

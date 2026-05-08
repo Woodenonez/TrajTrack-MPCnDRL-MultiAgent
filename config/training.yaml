@@ -1,0 +1,31 @@
+# Training configuration for training.py
+# Run with: python src/training.py --config config/training.yaml
+# Any field can be overridden via CLI, e.g.:
+#   python src/training.py --config config/training.yaml --mode cluster --index 3
+
+# Training mode: "local" (interactive, small run) or "cluster" (HPC, full run)
+mode: local
+
+# Index into the VARIANTS table (selects algorithm + environment combination)
+#   0 - DDPG, ImgsReward1, net [64,64], PER, device=auto
+#   1 - DDPG, ImgsReward2, net [64,64], PER, device=auto
+#   2 - DDPG, RaysReward1, net [16,16], PER, device=cpu
+#   3 - DDPG, RaysReward2, net [16,16], PER, device=cpu
+index: 0
+
+# Run version number – used to distinguish separate training runs for the same variant
+run_vers: 0
+
+# Explicit output path.  Leave as null to auto-derive from index + run_vers:
+#   ./Model/training/variant-<index>/run<run_vers>
+path: null
+
+# Set to true to load the best saved checkpoint and run evaluation instead of training
+evaluation: true
+
+# Total environment steps for training.
+# Leave as null to use mode-dependent defaults (1e5 for local, 7e6 for cluster).
+tot_timesteps: null
+
+# Number of parallel environments
+n_cpu: 20

@@ -1,5 +1,7 @@
 # Extra
 mpc_solver/
+model/
+Model/ # only pretrained models are kept
 
 # Python-generated files
 __pycache__/
@@ -8,6 +10,14 @@ build/
 dist/
 wheels/
 *.egg-info
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+.cache/
+
+# VS Code settings
+.vscode/
 
 # Virtual environments
 .venv

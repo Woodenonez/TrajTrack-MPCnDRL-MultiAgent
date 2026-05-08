@@ -103,13 +103,8 @@ class TrajectoryPlannerEnvironment(gym.Env):
     def update_termination(self) -> bool:
         return bool(self.collided or self.reached_goal)
 
-    def update_status(self, reset:bool=False) -> None:
-        """
-        Update some cached status variables for the current run of the
-        environment.
-
-        :param reset: Whether reset() was called on the environment
-        """
+    def update_status(self, reset=False) -> None:
+        """Update some cached status variables for the current run of the environment."""
         if reset:
             self.collided_with_obstacle = False
             self.collided_with_boundary = False
@@ -212,7 +207,7 @@ class TrajectoryPlannerEnvironment(gym.Env):
         self.agent.step(action, self.time_step)
 
     def step(self, action: Any | None):
-        """Step the environment by one time step, including agent (optional) and obstacles.
+        """Step the env by one time step, including agent (optional) and obstacles.
 
         Args:
             action: If not None, the action to be taken by the agent. 

@@ -2,11 +2,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString # type: ignore
 
 from . import Obstacle, Boundary, MobileRobot, Goal
 
-from typing import Iterable, Union
+from typing import Sequence, Union
 import numpy.typing as npt
 from matplotlib.axes import Axes
 
@@ -29,7 +29,7 @@ def polygon(ax: Axes, p: Union[Polygon, npt.ArrayLike], *args, **kwargs) -> None
 def obstacle(ax: Axes, o: Obstacle, *args, padded: bool = False, **kwargs) -> None:
     polygon(ax, o.get_padded_vertices() if padded else o.get_vertices(), *args, **kwargs)
 
-def obstacles(ax: Axes, obstacles: Iterable[Obstacle], fmt: str = 'r', *args, padded: bool = False, label: str = 'Obstacles', **kwargs) -> None:
+def obstacles(ax: Axes, obstacles: Sequence[Obstacle], fmt: str = 'r', *args, padded: bool = False, label: str = 'Obstacles', **kwargs) -> None:
     if len(obstacles) > 0:
         for o in obstacles:
             obstacle(ax, o, fmt, *args, padded=padded, **kwargs)
@@ -47,16 +47,17 @@ def robot(ax: Axes, robot: MobileRobot) -> None:
     s = np.sin(robot.angle)
     X = 0.9 * robot.cfg.RADIUS * np.array([[c, -s], [s, c]]) @ X
 
-    ax.add_artist(plt.Circle(robot.position, robot.cfg.RADIUS, color="r", alpha=1, zorder=100))
+    ax.add_artist(plt.Circle((robot.position[0], robot.position[1]), robot.cfg.RADIUS, color="r", alpha=1, zorder=100))
     ax.add_artist(plt.Polygon((robot.position[:, None] + X).T, color="lightsalmon", zorder=101))
 
 def sectors(ax: Axes, sectors: npt.NDArray, *args, 
             angle: float | None = None, position: npt.NDArray | None = None, 
             robot: Union[MobileRobot, None] = None, 
-            color='y', alpha: float = 0.5, label: str = None, **kwargs) -> None:
+            color='y', alpha: float = 0.5, label: str | None = None, **kwargs) -> None:
     if robot is not None:
         angle = robot.angle
         position = robot.position
+    assert position is not None and angle is not None, "Either robot or both position and angle must be provided."
 
     segment_width = 2 * np.pi / len(sectors)
     for i in range(len(sectors)):
@@ -76,10 +77,11 @@ def sectors(ax: Axes, sectors: npt.NDArray, *args,
 def rays(ax: Axes, rays: npt.NDArray, *args, 
          angle: float | None = None, position: npt.NDArray | None = None, 
          robot: Union[MobileRobot, None] = None, 
-         color='yellowgreen', alpha: float = 1, label: str = None, **kwargs) -> None:
+         color='yellowgreen', alpha: float = 1, label: str | None = None, **kwargs) -> None:
     if robot is not None:
         angle = robot.angle
         position = robot.position
+    assert position is not None and angle is not None, "Either robot or both position and angle must be provided."
     
     segment_width = 2 * np.pi / len(rays)
     for i in range(len(rays)):

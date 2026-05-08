@@ -11,8 +11,7 @@ rot_180 = np.array([[-1,0],[0,-1]])
 rot_270 = np.array([[0,1],[-1,0]])
 
 def generate_map_multi_robot1() -> MapDescription:
-    """Generates a randomized map with one static obstacle
-    """
+    """Generates a randomized map with one static obstacle"""
     box_resolution = 9
     nest_size = 3
     
@@ -58,13 +57,10 @@ def generate_map_multi_robot1() -> MapDescription:
     robot = MobileRobot(init_state)
     
     goal = Goal(positions.pop())
-    # print(positions)
     return robot, boundary, obstacles, goal
 
 def generate_map_multi_robot2() -> MapDescription:
-    """
-    Generates a randomized map with one static obstacle
-    """
+    """Generates a randomized map with one static obstacle"""
     nest_size = 3
     box_resolution = 7
 
@@ -72,9 +68,9 @@ def generate_map_multi_robot2() -> MapDescription:
     # nest = np.array([(nest_size,0.1),(nest_size,0.5),(nest_size-0.2,0.5),(nest_size-0.2,0.1),(0.1,0.1),(0.1,nest_size - 0.1),(nest_size-0.2,nest_size - 0.1),(nest_size-0.2,nest_size - 0.5),(nest_size,nest_size - 0.5),(nest_size,nest_size - 0.1)]).T
     
     map_size = nest_size*box_resolution
-    nodes = []#[(nest_size,nest_size)]
+    nodes = [] #[(nest_size,nest_size)]
     positions = []
-    obstacles = []
+    obstacles: list[Obstacle] = []
     for i in range(map_size//nest_size): #LEFTSECTION
         if i < map_size//nest_size - 1 and i > 0:
             nodes += list(map(tuple,(nest+np.array([0,i*nest_size]).reshape(2,1)).T))
@@ -107,9 +103,7 @@ def generate_map_multi_robot2() -> MapDescription:
     return MobileRobot(init_state), Boundary(nodes), obstacles, Goal((goal_position[0],goal_position[1]))
 
 def generate_map_multi_robot3() -> MapDescription:
-    """
-    Generates a randomized map with one static obstacle
-    """
+    """Generates a randomized map with one static obstacle"""
     nest_size = 4
     door_size = 2
     box_resolution = random.choice([6,8,10])
@@ -207,10 +201,7 @@ def generate_map_multi_robot3() -> MapDescription:
     return MobileRobot(init_state), Boundary(nodes), obstacles, Goal((goal_position[0],goal_position[1]))
 
 def generate_map_multi_robot3_eval() -> MapDescription:
-
-    """
-    Generates a randomized map with one static obstacle
-    """
+    """Generates a randomized map with one static obstacle"""
     nest_size = 4
     door_size = 2
     box_resolution = 8

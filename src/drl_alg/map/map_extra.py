@@ -3,24 +3,19 @@ This file is used to generate the maps which the DRL agent will be trained and
 evaluated in. Such a map constitutes e.g. the initial robot position, the goal
 position and the locations of obstacles and boundaries.
 """
-
-from typing import Union, List, Tuple
 import math
 from math import pi
 import random
 
 import numpy as np
 
-from ..environment import MobileRobot, Obstacle, Boundary, Goal, MapDescription, MapGenerator
-from .map_multi_robot import generate_map_multi_robot3
-from .map import generate_map_corridor
+from drl_env import MobileRobot, Obstacle, Boundary, Goal, MapDescription
+from .map_base import generate_map_corridor
 
 ### Training maps ###
 
-def generate_simple_map_easy() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstacles
-    """
+def generate_simple_map_easy1() -> MapDescription:
+    """Generates a randomized map with many dynamic obstacles"""
     # direction = np.random.choice(['N','E','S','W'])
     # if direction == 'N':
     #     x_init =        random.uniform(1,19)
@@ -44,45 +39,36 @@ def generate_simple_map_easy() -> MapDescription:
     #     y_goal =        random.uniform(1,19)
     
     init_state = np.array([1, 1, 0.0, 0, 0])
-    atr = MobileRobot(init_state)
+    robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (20, 0), (20, 20), (0, 20)])
-    obstacles = []
+    obstacles: list = []
 
     goal = Goal((19, 19))
 
-    return atr, boundary, obstacles, goal
+    return robot, boundary, obstacles, goal
 
 def generate_simple_map_easy2() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstacles
-    """
-
+    """Generates a randomized map with many dynamic obstacles"""
     init_state = np.array([5, 10, 0.0, 0, 0])
-    atr = MobileRobot(init_state)
+    robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (40, 0), (40, 20), (0, 20)])
     obstacles = []
     unexpected_obstacles = []
     obstacles.append(Obstacle.create_mpc_static([(0, 0), (0, 9), (40, 9), (40, 0)]))
     obstacles.append(Obstacle.create_mpc_static([(0, 20), (0, 14), (40, 14), (40, 20)]))
     goal = Goal((35, 10))
-
     
     for i in [10,15,20,25,30]:
         unexpected_obstacles.append(Obstacle.create_mpc_static([(i, 11), (i, 9), (i+2, 9), (i+2, 11)]))
     for o in unexpected_obstacles:
         o.visible_on_reference_path = False
 
-    # unexpected_obstacle = Obstacle.create_mpc_dynamic_old(p1=(35, 10), p2=(5, 10), freq=0.1, rx=0.8, ry=0.8, angle=0.0, corners=20)
-    # # unexpected_obstacle.visible_on_reference_path = False
-    # unexpected_obstacles.append(unexpected_obstacle)
     obstacles.extend(unexpected_obstacles)
-    return atr, boundary, obstacles, goal
+    return robot, boundary, obstacles, goal
+
 
 def generate_simple_map_static1() -> MapDescription:
-    """
-    Generates a randomized map with one static obstacle
-    """
-
+    """Generates a randomized map with one static obstacle"""
     init_state = np.array([2.6 + random.uniform(-2,2), random.uniform(0.6,19.4), random.uniform(-pi, pi), 0, 0])
     robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (40, 0), (40, 20), (0, 20)])
@@ -101,9 +87,7 @@ def generate_simple_map_static1() -> MapDescription:
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_static2() -> MapDescription:
-    """
-    Generates a randomized map with one static obstacle
-    """
+    """Generates a randomized map with one static obstacle"""
     start_x = 2.6 + random.uniform(-2,1)
     start_y = random.uniform(3,17)
     goal_x = 37.5 + random.uniform(-1,2)
@@ -153,12 +137,8 @@ def generate_simple_map_static2() -> MapDescription:
 
     return robot, boundary, obstacles, goal
 
-
 def generate_simple_map_static3() -> MapDescription:
-    """
-    Generates a randomized map with one dynamic obstacle
-    """
-
+    """Generates a randomized map with one dynamic obstacle"""
     init_state = np.array([2 + random.uniform(-1,0), random.uniform(1,29), random.uniform(-pi, pi), 0, 0])
     robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (30, 0), (30, 30), (0, 30)])
@@ -178,10 +158,7 @@ def generate_simple_map_static3() -> MapDescription:
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_static4() -> MapDescription:
-    """
-    Generates a randomized maze-like map
-    """
-
+    """Generates a randomized maze-like map"""
     init_state = np.array([random.uniform(0.6,2), random.uniform(0.6,19.4), random.uniform(-pi, pi), 0, 0])
     robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (25, 0), (25, 20), (0, 20)])
@@ -237,9 +214,7 @@ def generate_simple_map_static4() -> MapDescription:
 
 
 def generate_simple_map_nonconvex_U() -> MapDescription:
-    """
-    Generates a randomized map with with one U-shape obstacle
-    """
+    """Generates a randomized map with with one U-shape obstacle"""
     start_x = 5 + random.uniform(-4.4,2)
     start_y = random.uniform(0.6,19.4)
     goal_x = 35 + random.uniform(-2,4.4)
@@ -254,15 +229,12 @@ def generate_simple_map_nonconvex_U() -> MapDescription:
 
     obstacles.append(Obstacle.create_non_convex_u_shape(((goal_x+start_x)/2,(goal_y+start_y)/2),((goal_x+start_x)/2,(goal_y+start_y)/2),0.0,angle))
 
-
     goal = Goal((goal_x, goal_y))
 
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_nonconvex_L() -> MapDescription:
-    """
-    Generates a randomized map with with one L-shape obstacle
-    """
+    """Generates a randomized map with with one L-shape obstacle"""
     start_x = 5 + random.uniform(-4.4,2)
     start_y = random.uniform(0.6,19.4)
     goal_x = 35 + random.uniform(-2,4.4)
@@ -277,15 +249,12 @@ def generate_simple_map_nonconvex_L() -> MapDescription:
 
     obstacles.append(Obstacle.create_non_convex_l_shape(((goal_x+start_x)/2,(goal_y+start_y)/2),((goal_x+start_x)/2,(goal_y+start_y)/2),0.0,angle))
 
-
     goal = Goal((goal_x, goal_y))
 
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_nonconvex_static() -> MapDescription:
-    """
-    Generates a randomized map with with one L-shape obstacle
-    """
+    """Generates a randomized map with with one L-shape obstacle"""
     start_x = 5 + random.uniform(-4.4,2)
     start_y = random.uniform(0.6,19.4)
     goal_x = 35 + random.uniform(-2,4.4)
@@ -317,16 +286,13 @@ def generate_simple_map_nonconvex_static() -> MapDescription:
         angle = math.atan2(port_center-goal_y,wall_center + r - goal_x) + pi/2
         obstacles.append(Obstacle.create_non_convex_u_shape(((goal_x+wall_center+r)/2,(goal_y+port_center)/2),((goal_x+wall_center+r)/2,(goal_y+port_center)/2),0.0,angle))
 
-
     goal = Goal((goal_x, goal_y))
 
     return robot, boundary, obstacles, goal
 
-def generate_simple_map_dynamic1() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstalces
-    """
 
+def generate_simple_map_dynamic1() -> MapDescription:
+    """Generates a randomized map with many dynamic obstalces"""
     init_state = np.array([2 + random.uniform(-1,1), random.uniform(2,18), random.uniform(-pi, pi), 0, 0])
     robot = MobileRobot(init_state)
     boundary = Boundary([(0, 0), (20, 0), (20, 20), (0, 20)])
@@ -336,7 +302,6 @@ def generate_simple_map_dynamic1() -> MapDescription:
     for i in range(num_obstacle):
         x1 = random.uniform(4,16)
         y1 = random.uniform(4,16)
-
         x2 = random.uniform(4,16)
         y2 = random.uniform(4,16)
         rx = random.uniform(0.2, 1.2)
@@ -346,14 +311,10 @@ def generate_simple_map_dynamic1() -> MapDescription:
         angle = random.uniform(0, 2 * pi)
         obstacles.append(Obstacle.create_mpc_dynamic((x1, y1), (x2, y2), freq, rx, ry, angle, random = False))
         # obstacles.append(Obstacle.create_dynamic_obstacle((x1, y1), (x2, y2), freq, rx, ry, angle))
-
-
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_dynamic2() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstalces
-    """
+    """Generates a randomized map with many dynamic obstalces"""
     x_min = 0
     x_max = 40
     y_min = 0
@@ -370,7 +331,6 @@ def generate_simple_map_dynamic2() -> MapDescription:
         x1 =  (i+1)*delta + random.uniform(-2,2)
         # x1 = random.uniform(x_min + 5, x_max - 5)
         y1 = y_min + random.uniform(1,3)
-
         x2 = x1 + random.uniform(-2,2)
         y2 = random.uniform(12,14)
         rx = random.uniform(0.2, 1.2)
@@ -379,14 +339,10 @@ def generate_simple_map_dynamic2() -> MapDescription:
         angle = random.uniform(0, 2 * pi)
         obstacles.append(Obstacle.create_mpc_dynamic((x1, y1), (x2, y2), freq, rx, ry, angle, random = False))
         # obstacles.append(Obstacle.create_dynamic_obstacle((x1, y1), (x2, y2), freq, rx, ry, angle))
-
-
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_dynamic3() -> MapDescription:
-    """
-    Generates a randomized map with many dynamic obstalces
-    """
+    """Generates a randomized map with many dynamic obstalces"""
     x_min = 0
     x_max = 40
     y_min = 0
@@ -403,7 +359,6 @@ def generate_simple_map_dynamic3() -> MapDescription:
         x1 =  x_min + 5
         # x1 = random.uniform(x_min + 5, x_max - 5)
         y1 = i*delta + random.uniform(1,3)
-
         x2 = x_max - 5
         y2 = y1 + random.uniform(-2,2)
         rx = random.uniform(0.2, 1.2)
@@ -412,13 +367,10 @@ def generate_simple_map_dynamic3() -> MapDescription:
         angle = random.uniform(0, 2 * pi)
         obstacles.append(Obstacle.create_mpc_dynamic((x1, y1), (x2, y2), freq, rx, ry, angle, random = False))
         # obstacles.append(Obstacle.create_dynamic_obstacle((x1, y1), (x2, y2), freq, rx, ry, angle))
-
     return robot, boundary, obstacles, goal
 
 def generate_simple_map_dynamic4() -> MapDescription:
-    """
-    Generates a randomized map with with one L-shape obstacle
-    """
+    """Generates a randomized map with with one L-shape obstacle"""
     start_x = 5 + random.uniform(-2,2)
     start_y = random.uniform(3,17)
     goal_x = 37 + random.uniform(-2,2)
@@ -443,25 +395,35 @@ def generate_simple_map_dynamic4() -> MapDescription:
                                                     (wall_center + r, port_center - 1),
                                                     (wall_center + r, 0)]))
 
-
-
     rx = random.uniform(0.2, 1.2)
     ry = random.uniform(0.2, 1.2)
     freq = 1/math.sqrt(((goal_x-(wall_center+r))**2+(goal_y-port_center)**2))*random.uniform(1,2)
     angle = math.atan2(port_center-goal_y,wall_center + r - goal_x)
     obstacles.append(Obstacle.create_mpc_dynamic((goal_x, goal_y), (wall_center+r, port_center), freq, rx, ry, angle, random = False))
 
-
-
     goal = Goal((goal_x, goal_y))
 
     return robot, boundary, obstacles, goal
 
+
 def generate_simple_map_dynamic() -> MapDescription:
-    return random.choice([generate_simple_map_dynamic1, generate_simple_map_dynamic2, generate_simple_map_dynamic3, generate_simple_map_dynamic4])()
+    return random.choice([
+        generate_simple_map_dynamic1, 
+        generate_simple_map_dynamic2, 
+        generate_simple_map_dynamic3, 
+        generate_simple_map_dynamic4
+    ])()
 
 def generate_simple_map_static() -> MapDescription:
-    return random.choice([generate_simple_map_static2, generate_simple_map_static4, generate_map_multi_robot3,generate_map_corridor])()
+    return random.choice([
+        generate_simple_map_static2, 
+        generate_simple_map_static4, 
+        generate_map_corridor
+    ])()
 
 def generate_simple_map_nonconvex() -> MapDescription:
-    return random.choice([generate_simple_map_nonconvex_U, generate_simple_map_nonconvex_L, generate_simple_map_nonconvex_static])()
+    return random.choice([
+        generate_simple_map_nonconvex_U, 
+        generate_simple_map_nonconvex_L, 
+        generate_simple_map_nonconvex_static
+    ])()

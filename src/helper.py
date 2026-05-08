@@ -5,14 +5,14 @@ import statistics
 import timeit
 
 import numpy as np
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point # type: ignore
 
 from path_planning import GeometricMap
 from obstacle_simulator.obstacle import geometry_tools
 
-from drl_env import MapDescription
-from drl_alg.utils.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
-from drl_alg.utils.map import generate_map_scene_1, generate_map_scene_2
+from drl_env import MapDescription, MapGenerator
+from drl_alg.map import generate_map_dynamic, generate_map_corridor, generate_map_mpc
+from drl_alg.map import generate_map_scene_1, generate_map_scene_2
 
 
 class PieceTimer:
@@ -87,8 +87,8 @@ class Metrics:
         if mode.upper() not in self._mode_list:
             raise ValueError(f"Mode '{mode.upper()}' not recognized (should be in {self._mode_list}).")
         self.mode = mode
-        self.trial_list = []
-        self.success_rate = 0
+        self.trial_list: list[dict] = []
+        self.success_rate = 0.0
 
     def write_latex(self, round_digit:int=4):
         print_data = self.get_average(round_digit)
@@ -100,14 +100,13 @@ class Metrics:
         return f"&  & {self.mode} & {ct[0]} & {ct[1]} & {ct[2]} & {dd[0]} & {dd[1]} & {smooth[0]} & {smooth[1]} & {int(print_data['finish_time'])} & {int(print_data['success_rate']*100)} \\\\ % OK DQN var"
     
     def get_average(self, round_digit:int=4) -> dict:
-        self.metric_average = {}
+        self.metric_average: dict[str, float | list[float]] = {}
         all_compuation_time = []
         all_deviation_distance = []
         all_smoothness = []
         all_clearance = []
         all_finish_time = []
         for trial in self.trial_list:
-            trial: dict
             all_compuation_time.append(trial["computation_time"])
             all_deviation_distance.append(trial["deviation_distance"])
             all_smoothness.append(trial["smoothness"])
@@ -182,31 +181,23 @@ def get_geometric_map(rl_map: MapDescription, inflate_margin: float) -> Geometri
     )
     return geometric_map
 
-def generate_map(scene:int=1, sub_scene:int=1, sub_scene_option:int=1, generator:bool=True) -> MapDescription:
-    """
-    MapDescription = Tuple[MobileRobot, Boundary, List[Obstacle], Goal]
-    """
+def generate_map(scene:int=1, sub_scene:int=1, sub_scene_option:int=1, generator:bool=True) -> MapDescription | MapGenerator:
     if scene == None: # training
-        return random.choice([generate_map_dynamic, generate_map_corridor, generate_map_mpc()])
-    
-    # return generate_map_dynamic
-    # return generate_map_corridor
-    # return generate_map_mpc()
-    
-    if scene == 1:
+        map_des = random.choice([generate_map_dynamic, generate_map_corridor, generate_map_mpc()])()
+    elif scene == 1:
         map_des = generate_map_scene_1(sub_scene, sub_scene_option)
     elif scene == 2:
         map_des = generate_map_scene_2(sub_scene, sub_scene_option)
     elif scene == 3:
         map_des = generate_map_mpc(11)()
     else:
-        raise ValueError(f"Scene {scene} not recognized (should be 1, 2, or 3).")
+        raise ValueError(f"Scene {scene} not recognized.")
     
-    def _generate_map():
+    def _map_generator():
         return map_des
 
     if generator:
-        return _generate_map
+        return _map_generator
     else:
         return map_des
-    
+        
