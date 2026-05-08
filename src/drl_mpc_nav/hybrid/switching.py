@@ -28,7 +28,7 @@ class HintSwitcher:
         self,
         max_switch_distance: float,
         min_detach_distance: float,
-        min_detach_steps: float = 5,
+        min_detach_steps: int = 5,
     ) -> None:
         self.switch_distance = max_switch_distance
         self.detach_distance = min_detach_distance

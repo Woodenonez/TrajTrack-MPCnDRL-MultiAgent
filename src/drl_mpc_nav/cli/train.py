@@ -85,9 +85,10 @@ VARIANTS = [
 def _make_map() -> MapDescription:
     import random as _random
 
-    return _random.choice(
-        [generate_map_dynamic, generate_map_corridor, generate_map_mpc()]
-    )()
+    # generate_map_mpc() is a factory returning a MapGenerator; the others are
+    # already MapGenerators — all three are callable and equivalent at this point.
+    map_generators = [generate_map_dynamic, generate_map_corridor, generate_map_mpc()]
+    return _random.choice(map_generators)()
 
 
 def _set_seeds(seed: int) -> None:

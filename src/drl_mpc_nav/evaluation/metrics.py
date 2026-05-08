@@ -40,6 +40,10 @@ class Metrics:
         "HYB-DDPG-V",
     ]
 
+    # Warm-up trials: after this many trials, discard the first N to stabilise
+    _MIN_TRIALS_FOR_WARMUP_DISCARD: int = 10
+    _WARMUP_TRIALS_TO_DISCARD: int = 5
+
     def __init__(self, mode: str) -> None:
         if mode.upper() not in self._mode_list:
             raise ValueError(
@@ -114,8 +118,8 @@ class Metrics:
             if trial["success"]:
                 all_ft.append(trial["finish_time"])
 
-        if len(all_ct) > 10:
-            all_ct = all_ct[5:]  # discard warm-up trials for stability
+        if len(all_ct) > self._MIN_TRIALS_FOR_WARMUP_DISCARD:
+            all_ct = all_ct[self._WARMUP_TRIALS_TO_DISCARD:]  # discard warm-up trials for stability
 
         if not all_ft:
             all_ft = [-1]
