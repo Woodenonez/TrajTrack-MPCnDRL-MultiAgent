@@ -20,12 +20,45 @@ dependencies = [
     "tyro>=1.0.13",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.9",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = [
+    "E501",   # line-too-long — kept for readability in long formulae
+    "B006",   # mutable default argument — used intentionally in some dataclasses
+    "SIM108", # ternary operator — some if/else chains are clearer as-is
+]
+
+[tool.ruff.lint.per-file-ignores]
+# CLI entry points call warnings.filterwarnings() before third-party imports
+"src/drl_mpc_nav/cli/*.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: long-running tests",
+    "requires_solver: requires built MPC solver",
+    "requires_model: requires pretrained RL model",
+]
 
 [tool.mypy]
 mypy_path = "src"
