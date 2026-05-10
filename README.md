@@ -44,6 +44,7 @@ The implementation supports three operating modes that are used throughout the t
 - [src/drl_env](src/drl_env): Gymnasium environments, robot state handling, obstacles, goals, rendering, and registered RL environments.
 - [src/drl_alg](src/drl_alg): RL algorithms and prioritized replay implementations, including custom DDPG and DQN variants.
 - [src/mpc_traj_tracker](src/mpc_traj_tracker): MPC configuration, solver generation, solver loading, and trajectory tracking logic.
+- [src/training.py](src/training.py): unified local/cluster DDPG training and evaluation entry point.
 
 ### Tests and experiment runners
 
@@ -54,7 +55,8 @@ The implementation supports three operating modes that are used throughout the t
 ### Assets and configuration
 
 - [config/mpc_default.yaml](config/mpc_default.yaml): default MPC parameters, constraints, horizon, and solver naming.
-- [model](model): pretrained DQN and DDPG checkpoints for image-based and ray-based observation variants.
+- [config/training.yaml](config/training.yaml): default training configuration for [src/training.py](src/training.py).
+- [pretrained_model](pretrained_model): pretrained DQN and DDPG checkpoints for image-based and ray-based observation variants.
 
 ## Environment Variants
 
@@ -128,13 +130,36 @@ python src/evaluation.py
 
 This script contains the main evaluation loop used to compare pure MPC, pure DDPG, and hybrid DDPG-MPC in dynamic scenes.
 
-### Train a policy locally
+### Train a policy (unified script)
 
 ```bash
-python src/continous_training_local.py
+python src/training.py --config config/training.yaml --mode local --evaluation False
 ```
 
-The local training script defines the training variants directly in code. It uses Stable-Baselines3 vectorized environments and can load an existing checkpoint or start a new run depending on the script settings.
+The unified training script replaces the old `continous_training_local.py` and `continous_training_cluster.py` scripts. It supports two modes:
+
+- `--mode local`: shorter interactive runs (default total steps: `100000`)
+- `--mode cluster`: long runs for HPC/SLURM (default total steps: `7000000`)
+
+You can select variants and output paths from CLI:
+
+```bash
+python src/training.py --mode local --index 0 --run-vers 0 --evaluation False
+python src/training.py --mode cluster --index 1 --run-vers 3 --evaluation False
+```
+
+Or use YAML defaults with optional overrides:
+
+```bash
+python src/training.py --config config/training.yaml
+python src/training.py --config config/training.yaml --mode cluster --index 1 --run-vers 3
+```
+
+To evaluate a saved checkpoint instead of training:
+
+```bash
+python src/training.py --config config/training.yaml --evaluation True
+```
 
 ### Train on a cluster
 
@@ -142,7 +167,7 @@ For SLURM-based training, see [doc/training/README.md](doc/training/README.md) a
 
 ## Pretrained Models
 
-Pretrained checkpoints are included under [model](model):
+Pretrained checkpoints are included under [pretrained_model](pretrained_model):
 
 - DQN image and ray variants
 - DDPG image and ray variants
