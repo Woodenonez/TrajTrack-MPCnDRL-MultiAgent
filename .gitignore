@@ -1,7 +1,9 @@
 # Extra
 mpc_solver/
 model/
-Model/ # only pretrained models are kept
+# Only pretrained models are kept
+Model/
+runs/
 
 # Python-generated files
 __pycache__/

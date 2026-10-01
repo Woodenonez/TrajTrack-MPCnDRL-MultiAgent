@@ -27,6 +27,8 @@ class RobotInfo:
     color: str
     done: bool
     pred_states: np.ndarray | None
+    budget_exhausted: bool = False
+    termination: str = "unknown"
 
 
 class Inflator:
@@ -172,7 +174,7 @@ class Simulator:
                     idx += self.ns*self.N_hor
         return other_robot_states
 
-    def run(self, map_manager: GeometricMap, obstacle_scanner: ObstacleScanner, plot_in_loop=False):
+    def run(self, map_manager: GeometricMap, obstacle_scanner: ObstacleScanner, plot_in_loop=False, *, max_steps: int | None = None):
         """Run the simulation
         
         Args:
@@ -190,6 +192,8 @@ class Simulator:
             done: whether the robot has finished its task
             pred_states: predicted states
         """
+        if max_steps is not None and max_steps <= 0:
+            raise ValueError("max_steps must be positive")
         ### Prepare for the loop computing ###
         for r_id in list(self.robot_dict):
             start    = self.robot_dict[r_id].start
@@ -197,6 +201,8 @@ class Simulator:
             mode     = self.robot_dict[r_id].mode
             ref_path = self.robot_dict[r_id].ref_path
             traj_gen = self.robot_dict[r_id].traj_gen
+            self.robot_dict[r_id].budget_exhausted = False
+            self.robot_dict[r_id].termination = "running"
             traj_gen.load_init_state(start, end)
             traj_gen.set_work_mode(mode)
             traj_gen.set_ref_trajectory(ref_path)
@@ -218,7 +224,7 @@ class Simulator:
                 traj_gen = self.robot_dict[r_id].traj_gen
                 self.plotter.add_object_to_pre(r_id, traj_gen.ref_traj.numpy(), start, end, color=color)
 
-        while (not all_terminated):
+        while not all_terminated and (max_steps is None or kt < max_steps):
             ### Static obstacles
             map_boundry, map_obstacle_list = map_manager()
             for i, map_obstacle in enumerate(map_obstacle_list):
@@ -244,13 +250,15 @@ class Simulator:
                 ### Plot in loop
                 if plot_in_loop:
                     self.plotter.update_plot(r_id, kt, actions[-1], traj_gen.state, cost, np.array(pred_states), current_ref_traj, color=color)
-            self.plotter.plot_in_loop(full_dyn_obstacle_list) # plot the dynamic obstacle only once
+            if plot_in_loop:
+                self.plotter.plot_in_loop(full_dyn_obstacle_list) # plot the dynamic obstacle only once
 
             ### Prepare for next loop ###
             cnt_done = 0
             for r_id in list(self.robot_dict):
                 traj_gen = self.robot_dict[r_id].traj_gen
                 terminated = traj_gen.check_termination_condition(traj_gen.state, traj_gen.past_actions[-1], traj_gen.final_goal)
+                self.robot_dict[r_id].termination = "completed" if terminated else "running"
                 if terminated:
                     self.robot_dict[r_id].done = True
                     cnt_done += 1
@@ -258,6 +266,10 @@ class Simulator:
                 all_terminated = True
 
             kt += self.config.action_steps
+
+        for robot in self.robot_dict.values():
+            robot.budget_exhausted = not robot.done and max_steps is not None and kt >= max_steps
+            robot.termination = "completed" if robot.done else "step_limit" if robot.budget_exhausted else "running"
 
         if self.use_tcp:
             for r_id in list(self.robot_dict):
@@ -270,5 +282,4 @@ class Simulator:
             self.plotter.close()
 
         return self.robot_dict
-
 

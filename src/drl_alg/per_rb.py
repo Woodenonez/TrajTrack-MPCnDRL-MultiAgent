@@ -19,6 +19,11 @@ class PerReplayBufferSamples(NamedTuple):
     indices: np.ndarray
     weights: np.ndarray
 
+    @property
+    def discounts(self) -> None:
+        """One-step PER samples use the algorithm gamma (SB3 2.7 API)."""
+        return None
+
 
 class PerReplayBuffer(DictReplayBuffer):
     """Replay buffer with Prioritized experience replay using a sum-tree data

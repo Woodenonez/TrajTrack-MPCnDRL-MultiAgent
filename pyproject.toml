@@ -10,15 +10,28 @@ dependencies = [
     "opengen>=0.9.4",
     "matplotlib>=3.10.8",
     "networkx>=3.6.1",
+    "numpy>=2.4.2",
     "opencv-python>=4.13.0.92",
+    "packaging>=26.0",
     "pyvisgraph>=0.2.1",
+    "pyyaml>=6.0.3",
     "scipy>=1.17.0",
     "shapely>=2.1.2",
     "tqdm>=4.67.3",
     "gymnasium>=1.2.3",
     "stable-baselines3>=2.7.1",
+    "torch>=2.10.0",
     "tyro>=1.0.13",
     "rich>=15.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.9",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
 ]
 
 [build-system]
@@ -27,6 +40,23 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "B006", "SIM108"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["demos"]
+markers = [
+    "slow: long-running tests",
+    "requires_solver: requires built MPC solver",
+    "requires_model: requires pretrained RL model",
+]
 
 [tool.mypy]
 mypy_path = "src"

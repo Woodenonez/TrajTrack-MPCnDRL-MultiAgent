@@ -1,192 +1,55 @@
-# Multi-Agent Trajectory Planning and Tracking: Hybrid DRL and MPC
+# Trajectory planning with DRL and MPC
 
-This repository contains a research codebase for collision-free trajectory planning and tracking of autonomous mobile robots by combining deep reinforcement learning (DRL) with model predictive control (MPC). The implementation covers both the earlier DQN-MPC formulation for single-robot navigation and the later DDPG-MPC formulation that extends the hybrid approach to continuous actions and multi-robot scenarios.
+This research codebase runs single-robot DQN/DDPG, MPC, and hybrid comparisons, plus a separate fleet MPC simulator. The hybrid runners use one robot; the fleet runner uses sequential MPC with peer predictions. A generated native MPC solver is currently required for all experiment modes, including pure RL and is **not included** in this checkout.
 
-The project is grounded in the following two papers included in [doc](doc):
+## Setup
 
-- [CASE2023-DQN-MPC](doc/CASE2023_DQN_MPC_Preprint.pdf), *Collision-Free Trajectory Planning of Mobile Robots by Integrating Deep Reinforcement Learning and Model Predictive Control*
-- [IROS2024-DDPG-MPC-MultiAgent](doc/IROS2024_DDPG_MPC_MultiAgent_Preprint.pdf), *Bird’s-Eye-View Trajectory Planning of Multiple Robots using Continuous Deep Reinforcement Learning and Model Predictive Control*
-
-## Research Summary
-
-The main idea is to let DRL propose a local collision-avoidance trajectory and let MPC refine and track that trajectory while enforcing kinematic, dynamic, and obstacle-related constraints.
-
-- In the 2023 paper, a DQN agent generates an alternative local reference when the original path is blocked.
-- In the 2024 paper, the approach is extended with DDPG, continuous actions, Bird’s-Eye-View image input, and sequential multi-robot execution.
-- MPC remains the final low-level decision maker, producing smooth, constraint-aware control actions.
-
-This hybrid design targets the tradeoff between the strengths and weaknesses of the individual methods:
-
-- DRL provides fast, fixed-cost inference and can suggest feasible paths around complex or non-convex obstacles.
-- MPC improves smoothness, constraint handling, and trajectory tracking quality.
-- The combined pipeline aims to outperform pure MPC and pure DRL in runtime robustness, path quality, and obstacle avoidance.
-
-## Method Overview
-
-At a high level, the workflow is:
-
-1. A global or reference path is given.
-2. The environment provides observations, either Bird’s-Eye-View images or ray-based sensing.
-3. A DRL policy proposes a short-horizon alternative trajectory or action sequence.
-4. The MPC trajectory tracker converts that proposal into feasible control commands while respecting robot dynamics, static obstacles, dynamic obstacles, and other robots.
-5. In multi-robot settings, other robots are modeled as dynamic obstacles with predicted trajectories for the current robot.
-
-The implementation supports three operating modes that are used throughout the tests and evaluation scripts:
-
-- pure MPC
-- pure RL
-- hybrid RL + MPC
-
-## Repository Structure
-
-### Core source modules
-
-- [src/drl_env](src/drl_env): Gymnasium environments, robot state handling, obstacles, goals, rendering, and registered RL environments.
-- [src/drl_alg](src/drl_alg): RL algorithms and prioritized replay implementations, including custom DDPG and DQN variants.
-- [src/mpc_traj_tracker](src/mpc_traj_tracker): MPC configuration, solver generation, solver loading, and trajectory tracking logic.
-- [src/training.py](src/training.py): unified local/cluster DDPG training and evaluation entry point.
-
-### Tests and experiment runners
-
-- [test/test_mpc.py](test/test_mpc.py): MPC-only simulation and optional solver rebuild.
-- [test/test_dqn.py](test/test_dqn.py): DQN, MPC, and hybrid DQN-MPC evaluation.
-- [test/test_ddpg.py](test/test_ddpg.py): DDPG, MPC, and hybrid DDPG-MPC evaluation.
-
-### Assets and configuration
-
-- [config/mpc_default.yaml](config/mpc_default.yaml): default MPC parameters, constraints, horizon, and solver naming.
-- [config/training.yaml](config/training.yaml): default training configuration for [src/training.py](src/training.py).
-- [pretrained_model](pretrained_model): pretrained DQN and DDPG checkpoints for image-based and ray-based observation variants.
-
-## Environment Variants
-
-Two RL observation modalities are supported by the registered Gymnasium environments:
-
-- `TrajectoryPlannerEnvironmentImgsReward-v0`: Bird’s-Eye-View image input
-- `TrajectoryPlannerEnvironmentRaysReward-v0`: ray-based sensing input
-
-In the research context, these correspond to two different perception assumptions:
-
-- ceiling-mounted or Bird’s-Eye-View sensing
-- onboard ray or lidar-style sensing
-
-## Installation
-
-### Prerequisites
-
-- Python 3.10 or newer
-- Rust toolchain with `cargo` available, for MPC solver generation and rebuilds
-- A Linux environment is recommended for the current setup
-
-We recommend using `UV` for Python environment management.
-Install the Python package in editable mode:
-```bash
-uv pip install -e .
-```
-
-## MPC Solver Build
-
-The MPC solver is generated through OpEn and compiled into Rust/Python bindings under [mpc_solver](mpc_solver). A prebuilt solver is already present in this repository, but you can rebuild it when changing MPC dynamics or configuration.
-
-To rebuild the default solver, use the MPC test entry point with the build flag enabled:
+Use Python 3.11 and a Rust toolchain for solver builds. From the repository root:
 
 ```bash
-python test/test_mpc.py --build True --plot False
+uv sync --locked
+source .venv/bin/activate
 ```
 
-The default solver name and build directory are defined in [config/mpc_default.yaml](config/mpc_default.yaml).
-
-## Quick Start
-
-### Run the MPC baseline
+<details><summary>Conda alternative</summary>
 
 ```bash
-python test/test_mpc.py
+conda env create -f environment.yml
+conda activate trajtrack
+python -m pip install -r requirements-conda.txt
+python -m pip install --no-deps -e .
 ```
 
-This runs the MPC-only simulator using the default configuration and plotting enabled.
+The exported requirements come from the same uv lock. Conda and cluster execution have not been verified here.
+</details>
 
-### Run the DDPG experiments
+## Commands
 
-```bash
-python test/test_ddpg.py
-```
+| Need | Command |
+| --- | --- |
+| Generate the native solver | `python scripts/build_solver.py --build-directory mpc_solver/candidate` |
+| Fleet MPC, case 4 | `python scripts/run_experiment.py --workflow mpc-demo --solver-directory mpc_solver/candidate` |
+| Image DDPG hybrid | `python scripts/run_experiment.py --workflow ddpg-demo --decision hybrid --observation image --checkpoint pretrained_model/ddpg/image/best_model.pt --solver-directory mpc_solver/candidate` |
+| Ray DQN hybrid | `python scripts/run_experiment.py --workflow dqn-demo --decision hybrid --observation ray --checkpoint pretrained_model/dqn/ray/best_model.pt --solver-directory mpc_solver/candidate` |
+| Quantitative DDPG comparison | `python scripts/run_experiment.py --workflow ddpg-eval --solver-directory mpc_solver/candidate` |
+| Ray/CPU training | `python scripts/train.py --mode local --index 1 --no-evaluation` |
 
-This script evaluates the DDPG setup and supports pure MPC, pure RL, and hybrid RL-MPC comparisons depending on how the script parameters are configured.
+Use `--visualization off` for a headless experiment, `--checkpoint PATH` for an explicit demo policy, and `--output-dir runs/NAME` for optional run records. The builder writes a candidate directory; pass that same directory to the launcher. The included `pretrained_model/{ddpg,dqn}/{image,ray}/best_model.pt` files are **policy state dictionaries** for demos. With `--path PATH`, training evaluation loads a full Stable-Baselines3 archive at `PATH/best_model`; do not pass a `.pt` demo policy there. `Model/` holds new training outputs and is separate from `pretrained_model/`.
 
-### Run the DQN experiments
+`python scripts/train.py` defaults to training; the supplied `config/training.yaml` sets `evaluation: true`. Override it with `--no-evaluation` when training from that YAML. Training variants are image/CUDA index 0 and ray/CPU index 1. See [training details](doc/training/README.md).
 
-```bash
-python test/test_dqn.py
-```
+Legacy demo modules remain under `tests/demos/`; use `scripts/run_experiment.py` for shipped checkpoints and explicit solver paths. `src/evaluation.py` remains the legacy quantitative entry. `src/mpc_traj_tracker/mpc_interface.py` is obsolete and is not used by these commands. Reported finish time is a step count; metric definitions are unchanged.
 
-This reproduces the earlier DQN-based hybrid setup used in the precursor work.
+Lightweight checks: `python -m unittest discover -s tests -p 'test_launch.py'` and `python scripts/smoke.py --help`. A help response does not verify solver, checkpoint, or numerical execution.
 
-### Run evaluation logic from source
+The `drl_mpc_nav.cli.train`, `.evaluate`, and `.build_mpc_solver` module commands delegate to the corresponding scripts and use their arguments. The obsolete six-variant training interface is retired; use the two documented training variants. Run the automated suite with `python -m pytest` after the locked development install.
 
-```bash
-python src/evaluation.py
-```
+See [run records and future project integration](doc/run_records.md) for array meanings and the relationship to `DyObAv-MPCnEBM-Warehouse`.
 
-This script contains the main evaluation loop used to compare pure MPC, pure DDPG, and hybrid DDPG-MPC in dynamic scenes.
+<details><summary>Research references</summary>
 
-### Train a policy (unified script)
+- [CASE 2023 DQN–MPC preprint](doc/CASE2023_DQN_MPC_Preprint.pdf)
+- [IROS 2024 DDPG–MPC preprint](doc/IROS2024_DDPG_MPC_MultiAgent_Preprint.pdf)
 
-```bash
-python src/training.py --config config/training.yaml --mode local --evaluation False
-```
-
-The unified training script replaces the old `continous_training_local.py` and `continous_training_cluster.py` scripts. It supports two modes:
-
-- `--mode local`: shorter interactive runs (default total steps: `100000`)
-- `--mode cluster`: long runs for HPC/SLURM (default total steps: `7000000`)
-
-You can select variants and output paths from CLI:
-
-```bash
-python src/training.py --mode local --index 0 --run-vers 0 --evaluation False
-python src/training.py --mode cluster --index 1 --run-vers 3 --evaluation False
-```
-
-Or use YAML defaults with optional overrides:
-
-```bash
-python src/training.py --config config/training.yaml
-python src/training.py --config config/training.yaml --mode cluster --index 1 --run-vers 3
-```
-
-To evaluate a saved checkpoint instead of training:
-
-```bash
-python src/training.py --config config/training.yaml --evaluation True
-```
-
-### Train on a cluster
-
-For SLURM-based training, see [doc/training/README.md](doc/training/README.md) and [doc/training/SLURM_jobscript.sh](doc/training/SLURM_jobscript.sh).
-
-## Pretrained Models
-
-Pretrained checkpoints are included under [pretrained_model](pretrained_model):
-
-- DQN image and ray variants
-- DDPG image and ray variants
-
-Each model directory contains typical Stable-Baselines3 artifacts such as:
-
-- `best_model.pt`
-- `final_model.pt`
-- `evaluations.npz`
-
-These checkpoints are used by the evaluation scripts and test runners.
-
-## Citation
-
-If you use this repository in academic work, cite the corresponding paper for the experiment setup you build upon:
-
-- CASE 2023 DQN-MPC paper for the discrete-action single-robot formulation
-- IROS 2024 DDPG-MPC paper for the continuous-action and multi-robot formulation
-
-## Status
-
-This repository is a research codebase rather than a polished end-user package. Some experiment settings are configured directly in the source files, and training workflows are still script-centric. The included pretrained checkpoints and test scripts provide the most direct path for reproducing results and exploring the method.
+The papers describe historical experiments; this README documents the current checkout's runnable interfaces.
+</details>

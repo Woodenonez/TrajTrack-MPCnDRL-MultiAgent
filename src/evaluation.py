@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from util.run_records import EpisodeRecord
+
 ### System import
 import os
 import copy
@@ -12,6 +20,7 @@ import torch
 from torch import no_grad
 import gymnasium as gym
 from stable_baselines3.common import env_checker
+from util.env_validation import check_env_isolated
 from drl_alg.per_ddpg import PerDDPG
 
 from drl_env import MobileRobot
@@ -38,7 +47,7 @@ def ref_traj_filter(original: np.ndarray, new: np.ndarray, decay=1):
             decay = 0.0
     return filtered
 
-def load_rl_model_env(generate_map, index: int) -> tuple[PerDDPG, TrajectoryPlannerEnvironment]:
+def load_rl_model_env(generate_map, index: int, *, checkpoint: Path | None = None) -> tuple[PerDDPG, TrajectoryPlannerEnvironment]:
     variant = [
         {
             'env_name': 'TrajectoryPlannerEnvironmentImgsReward-v0',
@@ -62,8 +71,11 @@ def load_rl_model_env(generate_map, index: int) -> tuple[PerDDPG, TrajectoryPlan
         raise ValueError('Invalid index')
     model_path = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'model/ddpg', model_folder_name, 'best_model.pt')
     
+    if checkpoint is not None:
+        model_path = str(checkpoint)
+
     env_eval:TrajectoryPlannerEnvironment = gym.make(variant['env_name'], generate_map=generate_map, discrete_action=False)
-    env_checker.check_env(env_eval)
+    check_env_isolated(env_eval, env_checker.check_env)
     ddpg_model = PerDDPG("MultiInputPolicy", env_eval, policy_kwargs={'net_arch': variant['net_arch']}, device=variant['device'])
     ddpg_model.policy.load_state_dict(torch.load(model_path, map_location=variant['device'], weights_only=False))
     return ddpg_model, env_eval
@@ -83,7 +95,7 @@ def circle_to_rect(pos: list, radius:float=DYN_OBS_SIZE):
     return [[pos[0]-radius, pos[1]-radius], [pos[0]+radius, pos[1]-radius], [pos[0]+radius, pos[1]+radius], [pos[0]-radius, pos[1]+radius]]
 
 
-def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:tuple[int, int, int]=(1, 1, 1), verbose:bool=False):
+def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_option:tuple[int, int, int]=(1, 1, 1), verbose:bool=False, *, checkpoint: Path | None = None, mpc_config: Path | None = None, solver_directory: Path | None = None, max_steps: int | None = None, record: EpisodeRecord | None = None):
     """
     Args:
         rl_index: 0 for image, 1 for ray
@@ -93,14 +105,21 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
         prt_decision_mode = {0: 'pure_mpc', 1: 'pure_ddpg', 2: 'hybrid'}
         print(f"The decision mode is: {prt_decision_mode[decision_mode]}")
 
+    step_limit: int = MAX_RUN_STEP if max_steps is None else max_steps
+    if step_limit <= 0:
+        raise ValueError("max_steps must be positive")
+
     time_list = []
 
-    ddpg_model, env_eval = load_rl_model_env(generate_map(*scene_option), rl_index)
+    ddpg_model, env_eval = load_rl_model_env(generate_map(*scene_option), rl_index, checkpoint=checkpoint)
     env_eval: TrajectoryPlannerEnvironment = env_eval.unwrapped
 
     CONFIG_FN = 'mpc_default.yaml'
     cfg_fpath = os.path.join(pathlib.Path(__file__).resolve().parents[1], 'config', CONFIG_FN)
-    traj_gen = TrajectoryGenerator(MPCConfig.from_yaml(cfg_fpath), motion_model=None)
+    config = MPCConfig.from_yaml(str(mpc_config) if mpc_config is not None else cfg_fpath)
+    if solver_directory is not None:
+        config.build_directory = str(solver_directory)
+    traj_gen = TrajectoryGenerator(config, motion_model=None)
     geo_map = get_geometric_map(env_eval.get_map_description(), inflate_margin=0.7)
     traj_gen.update_static_constraints(geo_map.processed_obstacle_list) # assuming static obstacles not changed
 
@@ -125,9 +144,9 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
 
             switch = HintSwitcher(10, 2, 10)
 
-            for i in range(0, MAX_RUN_STEP):
+            for i in range(0, step_limit):
 
-                print(f"\r{decision_mode}, {i+1}/{MAX_RUN_STEP}", end="  ")
+                print(f"\r{decision_mode}, {i+1}/{step_limit}", end="  ")
 
                 dyn_obstacle_list = [obs.keyframe.position.tolist() for obs in env_eval.obstacles if not obs.is_static]
                 dyn_obstacle_tmp  = [obs+[DYN_OBS_SIZE, DYN_OBS_SIZE, 0, 1] for obs in dyn_obstacle_list]
@@ -153,10 +172,18 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
                         mpc_output = traj_gen.get_action(chosen_ref_traj)
                     except Exception as e:
                         done = True
+                        if record is not None:
+                            record.termination = 'solver_error'
                         print(f'MPC fails: {e}')
                         break
                     last_mpc_time = timer_mpc(4, ms=True)
                     if mpc_output is None:
+                        done = True
+                        if record is not None:
+                            record.success = bool(info['success'])
+                            record.collided = bool(env_eval.collided)
+                            record.budget_exhausted = False
+                            record.termination = 'completed'
                         break
                     action, pred_states, cost = mpc_output
 
@@ -219,6 +246,8 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
                         mpc_output = traj_gen.get_action(chosen_ref_traj) # MPC computes the action
                     except Exception as e:
                         done = True
+                        if record is not None:
+                            record.termination = 'solver_error'
                         print(f'MPC fails: {e}')
                         break
                     last_mpc_time = timer_mpc(4, ms=True)
@@ -240,10 +269,29 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
                         print(f"Step {i}.Runtime (Hybrid DDPG): {last_mpc_time+last_rl_time} = {last_mpc_time}+{last_rl_time}ms")
 
 
+                if record is not None:
+                    record.environment_states.append(env_eval.agent.state.copy())
+                    if decision_mode == 1:
+                        record.rl_actions.append(np.asarray(action_index).copy())
+                    else:
+                        record.mpc_states.append(traj_gen.state.copy())
+                        if mpc_output is not None:
+                            record.mpc_actions.append(np.asarray(mpc_output[0]).copy())
+                    if chosen_ref_traj is not None:
+                        record.chosen_references.append(np.asarray(chosen_ref_traj).copy())
+                    record.timing_ms.append(float(time_list[-1]))
+                    record.success = bool(info['success'])
+                    record.collided = bool(env_eval.collided)
+                    record.budget_exhausted = i == step_limit - 1 and not done
+                    record.termination = ('success' if record.success else
+                                          'collision' if record.collided else
+                                          'step_limit' if record.budget_exhausted else
+                                          'terminated' if done else 'running')
+
                 if to_plot & (i%1==0): # render every third frame
                     env_eval.render(dqn_ref=rl_ref, actual_ref=chosen_ref_traj)
 
-                if i == MAX_RUN_STEP - 1:
+                if i == step_limit - 1:
                     done = True
                     if verbose:
                         print('Time out!')
@@ -255,12 +303,13 @@ def main_process(rl_index:int=1, decision_mode:int=1, to_plot=False, scene_optio
     action_list = [(v, w) for (v, w) in zip(env_eval.speeds, env_eval.angular_velocities)]
 
     if verbose:
-        print(f"Average time ({prt_decision_mode[decision_mode]}): {np.mean(time_list)}ms\n")
+        print(f"Average time ({prt_decision_mode[decision_mode]}): " +
+          (f"{np.mean(time_list)}ms\n" if time_list else "unavailable (no control steps)\n"))
     else:
         print()
     return time_list, info["success"], action_list, traj_gen.ref_traj, env_eval.traversed_positions, geo_map.obstacle_list
 
-def main_evaluate(rl_index: int, decision_mode, metrics: Metrics, scene_option:Tuple[int, int, int]) -> Metrics:
+def main_evaluate(rl_index: int, decision_mode, metrics: Metrics, scene_option:tuple[int, int, int]) -> Metrics:
     to_plot = False
     time_list, success, actions, ref_traj, actual_traj, obstacle_list = main_process(rl_index=rl_index, decision_mode=decision_mode, to_plot=to_plot, scene_option=scene_option)
     metrics.add_trial_result(computation_time_list=time_list, succeed=success, action_list=actions, 
